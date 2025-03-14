@@ -10,6 +10,7 @@ This project explores the use of hand synergies to control a simulated hand in U
 4. Go to: Window->Package Manager-> + -> Add package from disk -> select extracted folder from downloaded zip
 5. Go to: WEART -> Add Weart Startup Components
 6. From Hierarchy and go to: WEART-> Hands -> WEARTLeftHand -> go to Inspector and set the Tracking Source as WeArtController
+7. Start PLAY MODE 
 
 # Steps for DATASET creation
 
