@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using WeArt.Core;  // Import WeArt SDK
+using WeArt.Components;
 
 public class HandDataLogger : MonoBehaviour
 {
@@ -25,7 +27,14 @@ public class HandDataLogger : MonoBehaviour
     public Transform middle2;
     public Transform middle3;
 
-    public float closure;
+    // WeArt Closure Objects for each finger
+    public WeArtThimbleTrackingObject thumbThimble;
+    public WeArtThimbleTrackingObject indexThimble;
+    public WeArtThimbleTrackingObject middleThimble;
+
+    public float thumbClosure;
+    public float indexClosure;
+    public float middleClosure;
 
     // Start is called before the first frame update
     void Start()
@@ -39,7 +48,7 @@ public class HandDataLogger : MonoBehaviour
 
         if (!fileExists)
         {
-            writer.WriteLine("Joint1Tx,Joint1Ty,Joint1Tz,Joint2Tx,Joint2Ty,Joint2Tz,Joint3Tx,Joint3Ty,Joint3Tz,Joint1Ix,Joint1Iy,Joint1Iz, Joint2Ix,Joint2Iy, Joint2Iz, Joint3Ix, Joint3Iy, Joint3Iz,Joint1Mx,Joint1My,Joint1Mz, Joint2Mx,Joint2My, Joint2Mz, Joint3Mx, Joint3My, Joint3Mz,Closure");
+            writer.WriteLine("Joint1Tx, Joint1Ty, Joint1Tz, Joint2Tx, Joint2Ty, Joint2Tz, Joint3Tx, Joint3Ty, Joint3Tz, Joint1Ix, Joint1Iy, Joint1Iz, Joint2Ix, Joint2Iy, Joint2Iz, Joint3Ix, Joint3Iy, Joint3Iz, Joint1Mx, Joint1My, Joint1Mz, Joint2Mx, Joint2My, Joint2Mz, Joint3Mx, Joint3My, Joint3Mz,ThumbClosure, IndexClosure, MiddleClosure");
             writer.Flush();
         }
 
@@ -70,6 +79,14 @@ public class HandDataLogger : MonoBehaviour
     if (middle3 == null) Debug.LogError(" Missing Joint: DEF-f_middle.03.R");
 
     Debug.Log(" Joint search complete.");
+
+    thumbThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
+    indexThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
+    middleThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
+
+    if (thumbThimble == null) Debug.LogError("WeArt: Thumb Thimble not assigned!");
+    if (indexThimble == null) Debug.LogError("WeArt: Index Thimble not assigned!");
+    if (middleThimble == null) Debug.LogError("WeArt: Middle Thimble not assigned!");
     }
 
     void Update()
@@ -110,11 +127,16 @@ public class HandDataLogger : MonoBehaviour
                 Joint2M = new Vector3(NormalizeAngle(Joint2M.x), NormalizeAngle(Joint2M.y), NormalizeAngle(Joint2M.z));
                 Joint3M = new Vector3(NormalizeAngle(Joint3M.x), NormalizeAngle(Joint3M.y), NormalizeAngle(Joint3M.z));
 
+                // Estrarre valori di chiusura da WeArt SDK
+                if (thumbThimble != null) thumbClosure = thumbThimble.Closure.Value;
+                if (indexThimble != null) indexClosure = indexThimble.Closure.Value;
+                if (middleThimble != null) middleClosure = middleThimble.Closure.Value;
+
                 // Registra i dati solo se `writer` non è null
                 if (writer != null)
                 {
                     Debug.Log(" Scrivendo nel file CSV..."); // Messaggio di debug
-                    LogData(Joint1T, Joint2T, Joint3T, Joint1I, Joint2I, Joint3I, Joint1M, Joint2M, Joint3M, closure);
+                    LogData(Joint1T, Joint2T, Joint3T, Joint1I, Joint2I, Joint3I, Joint1M, Joint2M, Joint3M, thumbClosure, indexClosure, middleClosure );
                     Debug.Log($"Joint1T:  { Joint1T.x}");
 
                 }
@@ -127,7 +149,7 @@ public class HandDataLogger : MonoBehaviour
         return (angle > 180f) ? angle - 360f : angle;
     }
 
-    public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T, Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I, Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M, float closure)
+    public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T, Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I, Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M, float thumbClosure, float indexClosure, float middleClosure)
     {
         if (writer != null)  // Controllo che `writer` sia valido
         {
@@ -140,7 +162,7 @@ public class HandDataLogger : MonoBehaviour
               Joint1M.x + "," + Joint1M.y + "," + Joint1M.z + "," +
               Joint2M.x + "," + Joint2M.y + "," + Joint2M.z + "," +
               Joint3M.x + "," + Joint3M.y + "," + Joint3M.z + "," +
-              closure;
+              thumbClosure + "," + indexClosure + "," + middleClosure;
 
             writer.WriteLine(line);
             writer.Flush();
