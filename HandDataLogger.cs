@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using System.IO;
 using WeArt.Core;  // Import WeArt SDK
 using WeArt.Components;
+
 
 public class HandDataLogger : MonoBehaviour
 {
@@ -12,7 +14,7 @@ public class HandDataLogger : MonoBehaviour
 
     // Timer per la registrazione ogni 3 secondi
     private float lastSaveTime = 0f;
-    private float saveInterval = 3f; // Tempo tra una registrazione e l'altra
+    private float saveInterval = 1f; // Tempo tra una registrazione e l'altra
 
     // Riferimento ai joint di Weart
     public Transform thumb1;
@@ -42,7 +44,7 @@ public class HandDataLogger : MonoBehaviour
         filePath = Application.persistentDataPath + "/hand_dataset.csv";
         
         bool fileExists = File.Exists(filePath);  // Controllo PRIMA se il file esiste
-
+       
         // Apro il file solo DOPO aver controllato se esiste
         writer = new StreamWriter(filePath, true);
 
@@ -80,14 +82,16 @@ public class HandDataLogger : MonoBehaviour
 
     Debug.Log(" Joint search complete.");
 
-    thumbThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
-    indexThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
-    middleThimble = FindObjectOfType<WeArtThimbleTrackingObject>();
+   // Find the WeArt thimbles manually
+        thumbThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-thumb.01.R/DEF-thumb.02.R/DEF-thumb.03.R/LeftHapticThumb")?.GetComponent<WeArtThimbleTrackingObject>();
+        indexThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-f_index.01.R/DEF-f_index.02.R/DEF-f_index.03.R/LeftHapticIndex")?.GetComponent<WeArtThimbleTrackingObject>();
+        middleThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.02.R/DEF-f_middle.01.R/DEF-f_middle.02.R/DEF-f_middle.03.R/LeftHapticMiddle")?.GetComponent<WeArtThimbleTrackingObject>();
 
-    if (thumbThimble == null) Debug.LogError("WeArt: Thumb Thimble not assigned!");
-    if (indexThimble == null) Debug.LogError("WeArt: Index Thimble not assigned!");
-    if (middleThimble == null) Debug.LogError("WeArt: Middle Thimble not assigned!");
+        if (thumbThimble == null) Debug.LogError("WeArt: LeftHapticThumb not found!");
+        if (indexThimble == null) Debug.LogError("WeArt: LeftHapticIndex not found!");
+        if (middleThimble == null) Debug.LogError("WeArt: LeftHapticMiddle not found!");
     }
+    
 
     void Update()
     {
@@ -127,10 +131,10 @@ public class HandDataLogger : MonoBehaviour
                 Joint2M = new Vector3(NormalizeAngle(Joint2M.x), NormalizeAngle(Joint2M.y), NormalizeAngle(Joint2M.z));
                 Joint3M = new Vector3(NormalizeAngle(Joint3M.x), NormalizeAngle(Joint3M.y), NormalizeAngle(Joint3M.z));
 
-                // Estrarre valori di chiusura da WeArt SDK
-                if (thumbThimble != null) thumbClosure = thumbThimble.Closure.Value;
-                if (indexThimble != null) indexClosure = indexThimble.Closure.Value;
-                if (middleThimble != null) middleClosure = middleThimble.Closure.Value;
+                // Extract WeArt closure values
+                thumbClosure = thumbThimble?.Closure.Value ?? 0f;
+                indexClosure = indexThimble?.Closure.Value ?? 0f;
+                middleClosure = middleThimble?.Closure.Value ?? 0f;
 
                 // Registra i dati solo se `writer` non è null
                 if (writer != null)
@@ -151,23 +155,26 @@ public class HandDataLogger : MonoBehaviour
 
     public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T, Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I, Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M, float thumbClosure, float indexClosure, float middleClosure)
     {
-        if (writer != null)  // Controllo che `writer` sia valido
-        {
-            string line = Joint1T.x + "," + Joint1T.y + "," + Joint1T.z + "," +
-              Joint2T.x + "," + Joint2T.y + "," + Joint2T.z + "," +
-              Joint3T.x + "," + Joint3T.y + "," + Joint3T.z + "," +
-              Joint1I.x + "," + Joint1I.y + "," + Joint1I.z + "," +
-              Joint2I.x + "," + Joint2I.y + "," + Joint2I.z + "," +
-              Joint3I.x + "," + Joint3I.y + "," + Joint3I.z + "," +
-              Joint1M.x + "," + Joint1M.y + "," + Joint1M.z + "," +
-              Joint2M.x + "," + Joint2M.y + "," + Joint2M.z + "," +
-              Joint3M.x + "," + Joint3M.y + "," + Joint3M.z + "," +
-              thumbClosure + "," + indexClosure + "," + middleClosure;
 
+        if (writer != null)  // Ensure writer is valid
+    {
+        CultureInfo culture = CultureInfo.InvariantCulture;  // Forces "." as the decimal separator
+
+        string line = string.Format(culture,
+            "{0},{1},{2},{3},{4},{5},{6},{7},{8}," +
+            "{9},{10},{11},{12},{13},{14},{15},{16},{17}," +
+            "{18},{19},{20},{21},{22},{23},{24},{25},{26}," +
+            "{27},{28},{29}",
+            Joint1T.x, Joint1T.y, Joint1T.z, Joint2T.x, Joint2T.y, Joint2T.z, Joint3T.x, Joint3T.y, Joint3T.z,
+            Joint1I.x, Joint1I.y, Joint1I.z, Joint2I.x, Joint2I.y, Joint2I.z, Joint3I.x, Joint3I.y, Joint3I.z,
+            Joint1M.x, Joint1M.y, Joint1M.z, Joint2M.x, Joint2M.y, Joint2M.z, Joint3M.x, Joint3M.y, Joint3M.z,
+            thumbClosure, indexClosure, middleClosure
+        );
             writer.WriteLine(line);
             writer.Flush();
             Debug.Log(" Dati salvati nel file CSV!"); // Debug per confermare il salvataggio
         }
+
         else
         {
             Debug.LogError(" Errore: writer è null, impossibile scrivere nel file.");
