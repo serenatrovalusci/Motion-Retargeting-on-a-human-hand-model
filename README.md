@@ -14,7 +14,20 @@ This project explores the use of hand synergies to control a simulated hand in U
 
 # Steps for DATASET creation
 
-1. From Hierarchy and go to: WEART-> Hands -> WEARTLeftHand -> go to Inspector -> Add Component -> Script -> Hand Data Logger
-2. Select the joints fron WEARTLeftHand and slide them into the "Hand Data Logger (Script)" section
+1. Start PLAY MODE
+2. From Hierarchy and go to: WEART-> Hands -> WEARTLeftHand -> go to Inspector -> Add Component -> Script -> Hand Data Logger
+3. From Hierarchy -> Hands-> WEARTLeftHand -> HandRig->HandRoot->DEF-hand.R/DEF-thumb.01.R/DEF-thumb.02.R/DEF-thumb.03.R select LeftHapticThumb and slide it to "Thumb Closure" in Lefthand Inspector in Hand Data Logger section (look for LeftHapticIndex and LeftHapticMiddle, respectively) 
+4. From Hierarchy -> Hands-> WEARTLeftHand -> HandRig->HandRoot->DEF-hand.R/ select DEF-thumb.01.R and slide it to "Thumb 1" in the LeftHand Inspector in the Hand Data Logger section (look for all the remaining joints and do the same)
+5. You should see from the Unity console that the CSV file has been created, you can start moving your hand, data is being registered 
+6. Once you stop the PLAY MODE, the CSV file is saved
+7. You can find the CSV file in AppData(W + R) -> LocalLow-> DefaultCompany-> Unity Project folder
+
+# Neural Network 
+
+# Hand Synergies
+
+# Control Law
+
+
    
 
