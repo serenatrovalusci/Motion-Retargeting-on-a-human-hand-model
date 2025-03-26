@@ -12,11 +12,9 @@ public class HandDataLogger : MonoBehaviour
     private string filePath;
     private StreamWriter writer;
 
-    // Timer per la registrazione ogni 3 secondi
     private float lastSaveTime = 0f;
-    private float saveInterval = 1f; // Tempo tra una registrazione e l'altra
+    private float saveInterval = 0.3f;
 
-    // Riferimento ai joint di Weart
     public Transform thumb1;
     public Transform thumb2;
     public Transform thumb3;
@@ -29,7 +27,8 @@ public class HandDataLogger : MonoBehaviour
     public Transform middle2;
     public Transform middle3;
 
-    // WeArt Closure Objects for each finger
+    public Transform palm;
+
     public WeArtThimbleTrackingObject thumbThimble;
     public WeArtThimbleTrackingObject indexThimble;
     public WeArtThimbleTrackingObject middleThimble;
@@ -38,14 +37,11 @@ public class HandDataLogger : MonoBehaviour
     public float indexClosure;
     public float middleClosure;
 
-    // Start is called before the first frame update
     void Start()
     {
         filePath = Application.persistentDataPath + "/hand_dataset.csv";
-        
-        bool fileExists = File.Exists(filePath);  // Controllo PRIMA se il file esiste
-       
-        // Apro il file solo DOPO aver controllato se esiste
+
+        bool fileExists = File.Exists(filePath);
         writer = new StreamWriter(filePath, true);
 
         if (!fileExists)
@@ -54,7 +50,6 @@ public class HandDataLogger : MonoBehaviour
             writer.Flush();
         }
 
-        // Trova i joint nel prefab usando i nomi precisi
         thumb1 = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-thumb.01.R");
         thumb2 = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-thumb.01.R/DEF-thumb.02.R");
         thumb3 = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-thumb.01.R/DEF-thumb.02.R/DEF-thumb.03.R");
@@ -67,22 +62,22 @@ public class HandDataLogger : MonoBehaviour
         middle2 = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.02.R/DEF-f_middle.01.R/DEF-f_middle.02.R");
         middle3 = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.02.R/DEF-f_middle.01.R/DEF-f_middle.02.R/DEF-f_middle.03.R");
 
-        // Check if all joints were found
-    if (thumb1 == null) Debug.LogError(" Missing Joint: DEF-thumb.01.R");
-    if (thumb2 == null) Debug.LogError(" Missing Joint: DEF-thumb.02.R");
-    if (thumb3 == null) Debug.LogError(" Missing Joint: DEF-thumb.03.R");
+        palm = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R");
 
-    if (index1 == null) Debug.LogError(" Missing Joint: DEF-f_index.01.R");
-    if (index2 == null) Debug.LogError(" Missing Joint: DEF-f_index.02.R");
-    if (index3 == null) Debug.LogError(" Missing Joint: DEF-f_index.03.R");
+        if (thumb1 == null) Debug.LogError(" Missing Joint: DEF-thumb.01.R");
+        if (thumb2 == null) Debug.LogError(" Missing Joint: DEF-thumb.02.R");
+        if (thumb3 == null) Debug.LogError(" Missing Joint: DEF-thumb.03.R");
 
-    if (middle1 == null) Debug.LogError(" Missing Joint: DEF-f_middle.01.R");
-    if (middle2 == null) Debug.LogError(" Missing Joint: DEF-f_middle.02.R");
-    if (middle3 == null) Debug.LogError(" Missing Joint: DEF-f_middle.03.R");
+        if (index1 == null) Debug.LogError(" Missing Joint: DEF-f_index.01.R");
+        if (index2 == null) Debug.LogError(" Missing Joint: DEF-f_index.02.R");
+        if (index3 == null) Debug.LogError(" Missing Joint: DEF-f_index.03.R");
 
-    Debug.Log(" Joint search complete.");
+        if (middle1 == null) Debug.LogError(" Missing Joint: DEF-f_middle.01.R");
+        if (middle2 == null) Debug.LogError(" Missing Joint: DEF-f_middle.02.R");
+        if (middle3 == null) Debug.LogError(" Missing Joint: DEF-f_middle.03.R");
 
-   // Find the WeArt thimbles manually
+        if (palm == null) Debug.LogError(" Missing Joint: DEF-hand.R (palm)");
+
         thumbThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-thumb.01.R/DEF-thumb.02.R/DEF-thumb.03.R/LeftHapticThumb")?.GetComponent<WeArtThimbleTrackingObject>();
         indexThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.01.R/DEF-f_index.01.R/DEF-f_index.02.R/DEF-f_index.03.R/LeftHapticIndex")?.GetComponent<WeArtThimbleTrackingObject>();
         middleThimble = transform.Find("Hands/WEARTLeftHand/HandRig/HandRoot/DEF-hand.R/ORG-palm.02.R/DEF-f_middle.01.R/DEF-f_middle.02.R/DEF-f_middle.03.R/LeftHapticMiddle")?.GetComponent<WeArtThimbleTrackingObject>();
@@ -91,58 +86,49 @@ public class HandDataLogger : MonoBehaviour
         if (indexThimble == null) Debug.LogError("WeArt: LeftHapticIndex not found!");
         if (middleThimble == null) Debug.LogError("WeArt: LeftHapticMiddle not found!");
     }
-    
 
     void Update()
     {
-        // Controlla se sono passati almeno 3 secondi dall'ultima registrazione
         if (Time.time - lastSaveTime >= saveInterval)
         {
-            lastSaveTime = Time.time; // Aggiorna il tempo dell'ultima registrazione
+            lastSaveTime = Time.time;
 
             if (thumb1 != null && thumb2 != null && thumb3 != null &&
                 index1 != null && index2 != null && index3 != null &&
-                middle1 != null && middle2 != null && middle3 != null)
+                middle1 != null && middle2 != null && middle3 != null &&
+                palm != null)
             {
-                // Ottieni le rotazioni dei joint
-                Vector3 Joint1T = thumb1.localEulerAngles;
-                Vector3 Joint2T = thumb2.localEulerAngles;
-                Vector3 Joint3T = thumb3.localEulerAngles;
+                Vector3 Joint1T = (Quaternion.Inverse(palm.rotation) * thumb1.rotation).eulerAngles;
+                Vector3 Joint2T = (Quaternion.Inverse(palm.rotation) * thumb2.rotation).eulerAngles;
+                Vector3 Joint3T = (Quaternion.Inverse(palm.rotation) * thumb3.rotation).eulerAngles;
 
-                Vector3 Joint1I = index1.localEulerAngles;
-                Vector3 Joint2I = index2.localEulerAngles;
-                Vector3 Joint3I = index3.localEulerAngles;
+                Vector3 Joint1I = (Quaternion.Inverse(palm.rotation) * index1.rotation).eulerAngles;
+                Vector3 Joint2I = (Quaternion.Inverse(palm.rotation) * index2.rotation).eulerAngles;
+                Vector3 Joint3I = (Quaternion.Inverse(palm.rotation) * index3.rotation).eulerAngles;
 
-                Vector3 Joint1M = middle1.localEulerAngles;
-                Vector3 Joint2M = middle2.localEulerAngles;
-                Vector3 Joint3M = middle3.localEulerAngles;
+                Vector3 Joint1M = (Quaternion.Inverse(palm.rotation) * middle1.rotation).eulerAngles;
+                Vector3 Joint2M = (Quaternion.Inverse(palm.rotation) * middle2.rotation).eulerAngles;
+                Vector3 Joint3M = (Quaternion.Inverse(palm.rotation) * middle3.rotation).eulerAngles;
 
-                //Normalizzare gli angoli
+                Joint1T = NormalizeVector(Joint1T);
+                Joint2T = NormalizeVector(Joint2T);
+                Joint3T = NormalizeVector(Joint3T);
 
-                Joint1T = new Vector3(NormalizeAngle(Joint1T.x), NormalizeAngle(Joint1T.y), NormalizeAngle(Joint1T.z));
-                Joint2T = new Vector3(NormalizeAngle(Joint2T.x), NormalizeAngle(Joint2T.y), NormalizeAngle(Joint2T.z));
-                Joint3T = new Vector3(NormalizeAngle(Joint3T.x), NormalizeAngle(Joint3T.y), NormalizeAngle(Joint3T.z));
+                Joint1I = NormalizeVector(Joint1I);
+                Joint2I = NormalizeVector(Joint2I);
+                Joint3I = NormalizeVector(Joint3I);
 
-                Joint1I = new Vector3(NormalizeAngle(Joint1I.x), NormalizeAngle(Joint1I.y), NormalizeAngle(Joint1I.z));
-                Joint2I = new Vector3(NormalizeAngle(Joint2I.x), NormalizeAngle(Joint2I.y), NormalizeAngle(Joint2I.z));
-                Joint3I = new Vector3(NormalizeAngle(Joint3I.x), NormalizeAngle(Joint3I.y), NormalizeAngle(Joint3I.z));
+                Joint1M = NormalizeVector(Joint1M);
+                Joint2M = NormalizeVector(Joint2M);
+                Joint3M = NormalizeVector(Joint3M);
 
-                Joint1M = new Vector3(NormalizeAngle(Joint1M.x), NormalizeAngle(Joint1M.y), NormalizeAngle(Joint1M.z));
-                Joint2M = new Vector3(NormalizeAngle(Joint2M.x), NormalizeAngle(Joint2M.y), NormalizeAngle(Joint2M.z));
-                Joint3M = new Vector3(NormalizeAngle(Joint3M.x), NormalizeAngle(Joint3M.y), NormalizeAngle(Joint3M.z));
-
-                // Extract WeArt closure values
                 thumbClosure = thumbThimble?.Closure.Value ?? 0f;
                 indexClosure = indexThimble?.Closure.Value ?? 0f;
                 middleClosure = middleThimble?.Closure.Value ?? 0f;
 
-                // Registra i dati solo se `writer` non è null
                 if (writer != null)
                 {
-                    Debug.Log(" Scrivendo nel file CSV..."); // Messaggio di debug
-                    LogData(Joint1T, Joint2T, Joint3T, Joint1I, Joint2I, Joint3I, Joint1M, Joint2M, Joint3M, thumbClosure, indexClosure, middleClosure );
-                    Debug.Log($"Joint1T:  { Joint1T.x}");
-
+                    LogData(Joint1T, Joint2T, Joint3T, Joint1I, Joint2I, Joint3I, Joint1M, Joint2M, Joint3M, thumbClosure, indexClosure, middleClosure);
                 }
             }
         }
@@ -153,28 +139,34 @@ public class HandDataLogger : MonoBehaviour
         return (angle > 180f) ? angle - 360f : angle;
     }
 
+    Vector3 NormalizeVector(Vector3 angles)
+    {
+        return new Vector3(
+            NormalizeAngle(angles.x),
+            NormalizeAngle(angles.y),
+            NormalizeAngle(angles.z)
+        );
+    }
+
     public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T, Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I, Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M, float thumbClosure, float indexClosure, float middleClosure)
     {
+        if (writer != null)
+        {
+            CultureInfo culture = CultureInfo.InvariantCulture;
 
-        if (writer != null)  // Ensure writer is valid
-    {
-        CultureInfo culture = CultureInfo.InvariantCulture;  // Forces "." as the decimal separator
-
-        string line = string.Format(culture,
-            "{0},{1},{2},{3},{4},{5},{6},{7},{8}," +
-            "{9},{10},{11},{12},{13},{14},{15},{16},{17}," +
-            "{18},{19},{20},{21},{22},{23},{24},{25},{26}," +
-            "{27},{28},{29}",
-            Joint1T.x, Joint1T.y, Joint1T.z, Joint2T.x, Joint2T.y, Joint2T.z, Joint3T.x, Joint3T.y, Joint3T.z,
-            Joint1I.x, Joint1I.y, Joint1I.z, Joint2I.x, Joint2I.y, Joint2I.z, Joint3I.x, Joint3I.y, Joint3I.z,
-            Joint1M.x, Joint1M.y, Joint1M.z, Joint2M.x, Joint2M.y, Joint2M.z, Joint3M.x, Joint3M.y, Joint3M.z,
-            thumbClosure, indexClosure, middleClosure
-        );
+            string line = string.Format(culture,
+                "{0},{1},{2},{3},{4},{5},{6},{7},{8}," +
+                "{9},{10},{11},{12},{13},{14},{15},{16},{17}," +
+                "{18},{19},{20},{21},{22},{23},{24},{25},{26}," +
+                "{27},{28},{29}",
+                Joint1T.x, Joint1T.y, Joint1T.z, Joint2T.x, Joint2T.y, Joint2T.z, Joint3T.x, Joint3T.y, Joint3T.z,
+                Joint1I.x, Joint1I.y, Joint1I.z, Joint2I.x, Joint2I.y, Joint2I.z, Joint3I.x, Joint3I.y, Joint3I.z,
+                Joint1M.x, Joint1M.y, Joint1M.z, Joint2M.x, Joint2M.y, Joint2M.z, Joint3M.x, Joint3M.y, Joint3M.z,
+                thumbClosure, indexClosure, middleClosure
+            );
             writer.WriteLine(line);
             writer.Flush();
-            Debug.Log(" Dati salvati nel file CSV!"); // Debug per confermare il salvataggio
         }
-
         else
         {
             Debug.LogError(" Errore: writer è null, impossibile scrivere nel file.");
@@ -187,7 +179,6 @@ public class HandDataLogger : MonoBehaviour
         {
             writer.Close();
             writer.Dispose();
-            Debug.Log(" File CSV chiuso correttamente!");
         }
     }
 }
