@@ -1,4 +1,5 @@
 import torch
+import torch
 import numpy as np
 import joblib
 from MR_FCNN import HandPoseFCNN
@@ -28,7 +29,8 @@ def predict_joint_angles(closure_input):
 # ----------------------------
 if __name__ == "__main__":
     # Example: thumb = 0.5, index = 0.8, middle = 0.3
-    closure_input = [0.643, 0.533, 0.858]
+    #0.7686275,0.3607843,0.7843137,0.5803922
+    closure_input = [0.769, 0.361, 0.784, 0.580]
     
     predicted_angles = predict_joint_angles(closure_input)
 
