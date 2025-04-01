@@ -16,7 +16,7 @@ def load_data(dataset_path):
     data = pd.read_csv(dataset_path)
     data.columns = data.columns.str.strip()
 
-    closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure']
+    closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     joint_columns = [col for col in data.columns if col not in closure_columns]
 
     X = data[closure_columns].values
@@ -28,7 +28,7 @@ def load_data(dataset_path):
 
     return X, y
 
-X, y = load_data('hand_dataset_3.csv')
+X, y = load_data('hand_dataset_4.csv')
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 X_train = np.round(X_train, 3)
@@ -55,7 +55,7 @@ test_loader = DataLoader(test_ds, batch_size=64)
 # 2. Model Definition
 # ----------------------------
 class HandPoseFCNN(nn.Module):
-    def __init__(self, input_dim=3, output_dim=27):
+    def __init__(self, input_dim=4, output_dim=27):
         super().__init__()
         self.net = nn.Sequential(
     nn.Linear(input_dim, 512),
@@ -223,3 +223,4 @@ plt.show()
 # ----------------------------
 torch.save(model.state_dict(), 'hand_pose_fcnn.pth')
 print("\n Final model saved to hand_pose_fcnn.pth")
+
