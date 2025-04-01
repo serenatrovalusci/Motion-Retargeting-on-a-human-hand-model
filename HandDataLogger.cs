@@ -6,7 +6,6 @@ using System.IO;
 using WeArt.Core;  // Import WeArt SDK
 using WeArt.Components;
 
-
 public class HandDataLogger : MonoBehaviour
 {
     private string filePath;
@@ -36,6 +35,7 @@ public class HandDataLogger : MonoBehaviour
     public float thumbClosure;
     public float indexClosure;
     public float middleClosure;
+    public float thumbAbductionValue;
 
     void Start()
     {
@@ -46,7 +46,7 @@ public class HandDataLogger : MonoBehaviour
 
         if (!fileExists)
         {
-            writer.WriteLine("Joint1Tx, Joint1Ty, Joint1Tz, Joint2Tx, Joint2Ty, Joint2Tz, Joint3Tx, Joint3Ty, Joint3Tz, Joint1Ix, Joint1Iy, Joint1Iz, Joint2Ix, Joint2Iy, Joint2Iz, Joint3Ix, Joint3Iy, Joint3Iz, Joint1Mx, Joint1My, Joint1Mz, Joint2Mx, Joint2My, Joint2Mz, Joint3Mx, Joint3My, Joint3Mz,ThumbClosure, IndexClosure, MiddleClosure");
+            writer.WriteLine("Joint1Tx, Joint1Ty, Joint1Tz, Joint2Tx, Joint2Ty, Joint2Tz, Joint3Tx, Joint3Ty, Joint3Tz, Joint1Ix, Joint1Iy, Joint1Iz, Joint2Ix, Joint2Iy, Joint2Iz, Joint3Ix, Joint3Iy, Joint3Iz, Joint1Mx, Joint1My, Joint1Mz, Joint2Mx, Joint2My, Joint2Mz, Joint3Mx, Joint3My, Joint3Mz,ThumbClosure, IndexClosure, MiddleClosure, ThumbAbduction");
             writer.Flush();
         }
 
@@ -125,10 +125,15 @@ public class HandDataLogger : MonoBehaviour
                 thumbClosure = thumbThimble?.Closure.Value ?? 0f;
                 indexClosure = indexThimble?.Closure.Value ?? 0f;
                 middleClosure = middleThimble?.Closure.Value ?? 0f;
+                thumbAbductionValue = thumbThimble?.Abduction.Value ?? 0f;
 
                 if (writer != null)
                 {
-                    LogData(Joint1T, Joint2T, Joint3T, Joint1I, Joint2I, Joint3I, Joint1M, Joint2M, Joint3M, thumbClosure, indexClosure, middleClosure);
+                    LogData(Joint1T, Joint2T, Joint3T,
+                            Joint1I, Joint2I, Joint3I,
+                            Joint1M, Joint2M, Joint3M,
+                            thumbClosure, indexClosure, middleClosure,
+                            thumbAbductionValue);
                 }
             }
         }
@@ -148,7 +153,11 @@ public class HandDataLogger : MonoBehaviour
         );
     }
 
-    public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T, Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I, Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M, float thumbClosure, float indexClosure, float middleClosure)
+    public void LogData(Vector3 Joint1T, Vector3 Joint2T, Vector3 Joint3T,
+                        Vector3 Joint1I, Vector3 Joint2I, Vector3 Joint3I,
+                        Vector3 Joint1M, Vector3 Joint2M, Vector3 Joint3M,
+                        float thumbClosure, float indexClosure, float middleClosure,
+                        float thumbAbduction)
     {
         if (writer != null)
         {
@@ -158,18 +167,18 @@ public class HandDataLogger : MonoBehaviour
                 "{0},{1},{2},{3},{4},{5},{6},{7},{8}," +
                 "{9},{10},{11},{12},{13},{14},{15},{16},{17}," +
                 "{18},{19},{20},{21},{22},{23},{24},{25},{26}," +
-                "{27},{28},{29}",
+                "{27},{28},{29},{30}",
                 Joint1T.x, Joint1T.y, Joint1T.z, Joint2T.x, Joint2T.y, Joint2T.z, Joint3T.x, Joint3T.y, Joint3T.z,
                 Joint1I.x, Joint1I.y, Joint1I.z, Joint2I.x, Joint2I.y, Joint2I.z, Joint3I.x, Joint3I.y, Joint3I.z,
                 Joint1M.x, Joint1M.y, Joint1M.z, Joint2M.x, Joint2M.y, Joint2M.z, Joint3M.x, Joint3M.y, Joint3M.z,
-                thumbClosure, indexClosure, middleClosure
+                thumbClosure, indexClosure, middleClosure, thumbAbduction
             );
             writer.WriteLine(line);
             writer.Flush();
         }
         else
         {
-            Debug.LogError(" Errore: writer è null, impossibile scrivere nel file.");
+            Debug.LogError("Errore: writer è null, impossibile scrivere nel file.");
         }
     }
 
