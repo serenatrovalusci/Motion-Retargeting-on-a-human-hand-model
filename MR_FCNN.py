@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 import joblib
 from HandPoseClass import *
-
+from scipy.stats import zscore
 # ----------------------------
 # 1. Data Loading & Preprocessing
 # ----------------------------
@@ -29,7 +29,30 @@ def load_data(dataset_path):
 
     return X, y
 
-X, y = load_data('hand_dataset_4.csv')
+#----------------------------------
+# Outlier removal
+#----------------------------------
+
+def remove_outliers_zscore(X, y, threshold):
+    # Compute z-score for each column in y
+    z_scores = np.abs(zscore(y, axis=0))
+    
+    # Get a boolean mask: True if ALL joints are below threshold
+    mask = (z_scores < threshold).all(axis=1)
+    
+    # Apply mask to both input and output
+    return X[mask], y[mask]
+
+
+X, y = load_data('hand_dataset_6.csv')
+#print how many rows and columns
+print("outputs before removing outliers", X.shape)
+print("inputs before removing outliers",y.shape)
+X, y = remove_outliers_zscore(X, y, threshold=3.0)
+#print how many rows and columns
+print("outputs after removing outliers", X.shape)
+print("inputs after removing outliers",y.shape)
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 X_train = np.round(X_train, 3)
