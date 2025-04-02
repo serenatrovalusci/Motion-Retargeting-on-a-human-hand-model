@@ -2,22 +2,21 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from scipy.stats import zscore
 import joblib
 from HandPoseClass import *
-from scipy.stats import zscore
+
 # ----------------------------
 # 1. Data Loading & Preprocessing
 # ----------------------------
-def load_data(dataset_path):
+def load_data(dataset_path, closure_columns, z_thresh=3.0):
     data = pd.read_csv(dataset_path)
     data.columns = data.columns.str.strip()
-
-    closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     joint_columns = [col for col in data.columns if col not in closure_columns]
 
     X = data[closure_columns].values
@@ -25,200 +24,156 @@ def load_data(dataset_path):
 
     print("Input features (X):", closure_columns)
     print("Target features (y):", joint_columns)
-    print(f"Number of output features: {len(joint_columns)}")
+    print(f"Output features count: {len(joint_columns)}")
 
-    return X, y
+    print("Before outlier removal:", X.shape, y.shape)
+    X, y = remove_outliers_zscore(X, y, z_thresh)
+    print("After outlier removal:", X.shape, y.shape)
 
-#----------------------------------
-# Outlier removal
-#----------------------------------
+    return X, y, joint_columns
 
 def remove_outliers_zscore(X, y, threshold):
-    # Compute z-score for each column in y
     z_scores = np.abs(zscore(y, axis=0))
-    
-    # Get a boolean mask: True if ALL joints are below threshold
     mask = (z_scores < threshold).all(axis=1)
-    
-    # Apply mask to both input and output
     return X[mask], y[mask]
 
+def prepare_dataloaders(X, y, test_size=0.2, batch_size=64):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
-X, y = load_data('hand_dataset_6.csv')
-#print how many rows and columns
-print("outputs before removing outliers", X.shape)
-print("inputs before removing outliers",y.shape)
-X, y = remove_outliers_zscore(X, y, threshold=3.0)
-#print how many rows and columns
-print("outputs after removing outliers", X.shape)
-print("inputs after removing outliers",y.shape)
+    X_train, X_test = np.round(X_train, 3), np.round(X_test, 3)
+    y_train, y_test = np.round(y_train, 3), np.round(y_test, 3)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler_y = StandardScaler().fit(y_train)
+    y_train = scaler_y.transform(y_train)
+    y_test = scaler_y.transform(y_test)
 
-X_train = np.round(X_train, 3)
-X_test = np.round(X_test, 3)
-y_train = np.round(y_train, 3)
-y_test = np.round(y_test, 3)
+    train_loader = DataLoader(TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(y_train)), batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(TensorDataset(torch.FloatTensor(X_test), torch.FloatTensor(y_test)), batch_size=batch_size)
 
-scaler_y = StandardScaler().fit(y_train)
-y_train = scaler_y.transform(y_train)
-y_test = scaler_y.transform(y_test)
-
-X_train = torch.FloatTensor(X_train)
-X_test = torch.FloatTensor(X_test)
-y_train = torch.FloatTensor(y_train)
-y_test = torch.FloatTensor(y_test)
-
-train_ds = TensorDataset(X_train, y_train)
-test_ds = TensorDataset(X_test, y_test)
-
-train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_ds, batch_size=64)
+    return train_loader, test_loader, scaler_y
 
 # ----------------------------
-# 2. Model Definition
+# 2. Training & Evaluation
 # ----------------------------
-
-model = HandPoseFCNN()
-
-# ----------------------------
-# 3. Training Setup
-# ----------------------------
-criterion = nn.SmoothL1Loss()  # Less sensitive to outliers
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
-
-# ----------------------------
-# 4. Training Loop with Model Saving
-# ----------------------------
-def train(model, train_loader, test_loader, epochs=1500):
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, epochs=1500):
     train_losses, test_losses = [], []
-    best_loss = float('inf')
-    best_model_state = None
+    best_loss, best_model_state = float('inf'), None
 
     for epoch in range(epochs):
         model.train()
-        running_loss = 0.0
-        for xb, yb in train_loader:
-            optimizer.zero_grad()
-            preds = model(xb)
-            loss = criterion(preds, yb)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item() * xb.size(0)
-        train_loss = running_loss / len(train_loader.dataset)
+        train_loss = sum_step_loss(model, train_loader, criterion, optimizer, training=True)
 
-        # Validation
         model.eval()
-        test_loss = 0.0
-        with torch.no_grad():
-            for xb, yb in test_loader:
-                preds = model(xb)
-                test_loss += criterion(preds, yb).item() * xb.size(0)
-        test_loss /= len(test_loader.dataset)
+        test_loss = sum_step_loss(model, test_loader, criterion, training=False)
 
         scheduler.step(test_loss)
         train_losses.append(train_loss)
         test_losses.append(test_loss)
 
-        # Save best model
         if test_loss < best_loss:
             best_loss = test_loss
             best_model_state = model.state_dict()
-            torch.save(best_model_state, 'best_model.pth')
+            torch.save(best_model_state, 'hand_pose_fcnn.pth')
 
         if epoch % 50 == 0:
             lr = optimizer.param_groups[0]['lr']
             print(f'Epoch {epoch:3d} | LR: {lr:.5f} | Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}')
 
-    # Load best model before returning
-    if best_model_state is not None:
+    if best_model_state:
         model.load_state_dict(best_model_state)
 
     return train_losses, test_losses
 
-# ----------------------------
-# 5. Test Function
-# ----------------------------
-def test_model(model, test_loader):
-    model.eval()
+def sum_step_loss(model, loader, criterion, optimizer=None, training=False):
     total_loss = 0.0
-    all_preds = []
-    all_targets = []
+    for xb, yb in loader:
+        if training:
+            optimizer.zero_grad()
+        preds = model(xb)
+        loss = criterion(preds, yb)
+        if training:
+            loss.backward()
+            optimizer.step()
+        total_loss += loss.item() * xb.size(0)
+    return total_loss / len(loader.dataset)
+
+def test_model(model, test_loader, criterion):
+    model.eval()
+    all_preds, all_targets, total_loss = [], [], 0.0
 
     with torch.no_grad():
         for xb, yb in test_loader:
             preds = model(xb)
-            loss = criterion(preds, yb)
-            total_loss += loss.item() * xb.size(0)
+            total_loss += criterion(preds, yb).item() * xb.size(0)
             all_preds.append(preds)
             all_targets.append(yb)
 
-    mse = total_loss / len(test_loader.dataset)
     predictions = torch.cat(all_preds).cpu().numpy()
     targets = torch.cat(all_targets).cpu().numpy()
+    mse = total_loss / len(test_loader.dataset)
     mae = np.mean(np.abs(predictions - targets))
 
-    print(f"\n Final Test MSE: {mse:.4f}")
-    print(f" Final Test MAE: {mae:.4f}")
+    print(f"\nFinal Test MSE: {mse:.4f}")
+    print(f"Final Test MAE: {mae:.4f}")
 
     return predictions, targets, mse, mae
 
 # ----------------------------
-# 6. Train the Model
+# 3. Visualization
 # ----------------------------
-train_losses, test_losses = train(model, train_loader, test_loader)
+def plot_losses(train_losses, test_losses):
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(test_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE Loss')
+    plt.title('Training Progress')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
-# Save the scaler
-joblib.dump(scaler_y, "scaler_y.save")
-
-
-# ----------------------------
-# 7. Visualization of Losses
-# ----------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(train_losses, label='Train Loss')
-plt.plot(test_losses, label='Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('MSE Loss')
-plt.title('Training Progress')
-plt.legend()
-plt.grid(True)
-plt.show()
-
-# ----------------------------
-# 8. Load Best Model and Test
-# ----------------------------
-model.load_state_dict(torch.load('best_model.pth'))
-preds, targets, test_mse, test_mae = test_model(model, test_loader)
-
-# Invert to real values
-preds_real = scaler_y.inverse_transform(preds)
-targets_real = scaler_y.inverse_transform(targets)
-
-# Optional: save to CSV or compute metrics
-mae_real = np.mean(np.abs(preds_real - targets_real))
-print(f" Real-space MAE: {mae_real:.4f}")
-
-print("all_preds", preds)
-print("all_targets", targets)
+def plot_per_joint_mse(preds, targets):
+    per_joint_mse = np.mean((preds - targets) ** 2, axis=0)
+    plt.figure(figsize=(12, 5))
+    plt.bar(range(len(per_joint_mse)), per_joint_mse)
+    plt.xlabel("Joint Index")
+    plt.ylabel("MSE")
+    plt.title("Per-Joint MSE on Test Set")
+    plt.grid(True)
+    plt.show()
 
 # ----------------------------
-# 9. Per-Joint MSE Plot
+# 4. Main Pipeline
 # ----------------------------
-per_joint_mse = np.mean((preds - targets) ** 2, axis=0)
+if __name__ == "__main__":
+    closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
+    X, y, joint_columns = load_data('hand_dataset_6.csv', closure_columns)
 
-plt.figure(figsize=(12, 5))
-plt.bar(range(len(per_joint_mse)), per_joint_mse)
-plt.xlabel("Joint Index")
-plt.ylabel("MSE")
-plt.title("Per-Joint MSE on Test Set")
-plt.grid(True)
-plt.show()
+    train_loader, test_loader, scaler_y = prepare_dataloaders(X, y)
 
-# ----------------------------
-# 10. Save Final Model
-# ----------------------------
-torch.save(model.state_dict(), 'hand_pose_fcnn.pth')
-print("\n Final model saved to hand_pose_fcnn.pth")
+    model = HandPoseFCNN()
+    criterion = nn.MSELoss()  # More sensitive to outliers
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
+    train_losses, test_losses = train(model, train_loader, test_loader, criterion, optimizer, scheduler)
+
+    joblib.dump(scaler_y, "scaler_y.save")
+
+    plot_losses(train_losses, test_losses)
+
+    # Best model is already loaded at this point
+    preds, targets, test_mse, test_mae = test_model(model, test_loader, criterion)
+
+    preds_real = scaler_y.inverse_transform(preds)
+    targets_real = scaler_y.inverse_transform(targets)
+
+    mae_real = np.mean(np.abs(preds_real - targets_real))
+    print(f"Real-space MAE: {mae_real:.4f}")
+
+    print("all_preds", preds)
+    print("all_targets", targets)
+
+    plot_per_joint_mse(preds, targets)
+
+    print("\nFinal model saved to hand_pose_fcnn.pth")
