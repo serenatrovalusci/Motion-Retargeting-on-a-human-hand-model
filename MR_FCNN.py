@@ -19,6 +19,9 @@ def load_data(dataset_path, closure_columns, z_thresh=3.0):
     data.columns = data.columns.str.strip()
     joint_columns = [col for col in data.columns if col not in closure_columns]
 
+    # Remove last 453 rows
+    data = data.iloc[:-453, :]
+
     X = data[closure_columns].values
     y = data[joint_columns].values
 
