@@ -66,7 +66,7 @@ def prepare_dataloaders(X, y, test_size=0.2, batch_size=64):
 # ----------------------------
 # 2. Training & Evaluation
 # ----------------------------
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler, epochs=1500):
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, epochs=1000):
     train_losses, test_losses = [], []
     best_loss, best_model_state = float('inf'), None
 
@@ -158,7 +158,7 @@ def plot_per_joint_mse(preds, targets):
 # ----------------------------
 if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y, joint_columns = load_data('ultimate_hand_dataset.csv', closure_columns)
+    X, y, joint_columns = load_data('ultimate_2_hand_dataset.csv', closure_columns)
 
     train_loader, test_loader, scaler_y = prepare_dataloaders(X, y)
 
