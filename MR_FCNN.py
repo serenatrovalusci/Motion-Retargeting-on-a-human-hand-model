@@ -158,7 +158,7 @@ def plot_per_joint_mse(preds, targets):
 # ----------------------------
 if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y, joint_columns = load_data('ultimate_hand_dataset.csv', closure_columns)
+    X, y, joint_columns = load_data('last_dataset.csv', closure_columns)
 
     train_loader, test_loader, scaler_y = prepare_dataloaders(X, y)
 
