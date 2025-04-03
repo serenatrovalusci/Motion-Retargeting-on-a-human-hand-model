@@ -14,13 +14,13 @@ from HandPoseClass import *
 # ----------------------------
 # 1. Data Loading & Preprocessing
 # ----------------------------
-def load_data(dataset_path, closure_columns, z_thresh=3.0):
+def load_data(dataset_path, closure_columns, z_thresh=2.0):
     data = pd.read_csv(dataset_path)
     data.columns = data.columns.str.strip()
     joint_columns = [col for col in data.columns if col not in closure_columns]
 
     # Remove last 453 rows
-    data = data.iloc[:-453, :]
+    # data = data.iloc[:-453, :]
 
     X = data[closure_columns].values
     y = data[joint_columns].values
@@ -32,6 +32,14 @@ def load_data(dataset_path, closure_columns, z_thresh=3.0):
     print("Before outlier removal:", X.shape, y.shape)
     X, y = remove_outliers_zscore(X, y, z_thresh)
     print("After outlier removal:", X.shape, y.shape)
+
+    # import matplotlib.pyplot as plt
+
+    # plt.boxplot(y, vert=False)
+    # plt.title("Distribution of joint outputs")
+    # plt.xlabel("Z-score")
+    # plt.show()
+
 
     return X, y, joint_columns
 
@@ -150,7 +158,7 @@ def plot_per_joint_mse(preds, targets):
 # ----------------------------
 if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y, joint_columns = load_data('hand_dataset_6.csv', closure_columns)
+    X, y, joint_columns = load_data('ultimate_hand_dataset.csv', closure_columns)
 
     train_loader, test_loader, scaler_y = prepare_dataloaders(X, y)
 
