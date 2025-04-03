@@ -14,7 +14,7 @@ from HandPoseClass import *
 # ----------------------------
 # 1. Data Loading & Preprocessing
 # ----------------------------
-def load_data(dataset_path, closure_columns, z_thresh=2.0):
+def load_data(dataset_path, closure_columns, z_thresh=2.5):
     data = pd.read_csv(dataset_path)
     data.columns = data.columns.str.strip()
     joint_columns = [col for col in data.columns if col not in closure_columns]
@@ -158,7 +158,7 @@ def plot_per_joint_mse(preds, targets):
 # ----------------------------
 if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y, joint_columns = load_data('ultimate_2_hand_dataset.csv', closure_columns)
+    X, y, joint_columns = load_data('ultimate_hand_dataset.csv', closure_columns)
 
     train_loader, test_loader, scaler_y = prepare_dataloaders(X, y)
 
