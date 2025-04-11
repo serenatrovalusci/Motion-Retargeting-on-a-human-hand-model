@@ -48,8 +48,14 @@ try:
             output = model(input_tensor).numpy()
         # Inverse transform to joint space
         pca = joblib.load('pca_joint.save')
+
+        print("Model output shape:", output.shape)
+        print("Expected by PCA:", pca.n_components_)
+
         reconstructed_stand_joints = pca.inverse_transform(output)
+        print(" reconstructed_stand_joints:",  reconstructed_stand_joints)
         reconstructed_joints = scaler_y.inverse_transform(reconstructed_stand_joints).flatten()
+        print(" reconstructed_joints:",  reconstructed_joints)
    
          
         # Inverse transform to real values

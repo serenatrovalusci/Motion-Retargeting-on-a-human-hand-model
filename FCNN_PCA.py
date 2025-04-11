@@ -70,7 +70,7 @@ def generate_pca_dataset(dataset_path, closure_columns, pca_variance_threshold=0
     # Standardize joint data
     scaler = StandardScaler()
     joint_standardized = scaler.fit_transform(joint_data)
-
+  
     # Apply PCA
     pca = PCA(n_components=pca_variance_threshold)
     synergy_data = pca.fit_transform(joint_standardized)
@@ -81,7 +81,7 @@ def generate_pca_dataset(dataset_path, closure_columns, pca_variance_threshold=0
     joblib.dump(pca, 'pca_joint.save')
     
 
-    return closure_data, synergy_data
+    return closure_data, synergy_data, scaler
 
 
 def remove_outliers_zscore(X, y, threshold):
@@ -215,10 +215,10 @@ def run_testing():
         return
 
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y = generate_pca_dataset('last_dataset.csv', closure_columns)
+    X, y, scaler = generate_pca_dataset('last_dataset.csv', closure_columns)
     X, y = remove_outliers_zscore(X, y)
     _, test_loader = prepare_dataloaders(X, y)
-
+    joblib.dump(scaler, "scaler_PCA.save")
     model = HandPoseFCNN_PCA()
     model.load_state_dict(torch.load("hand_pose_fcnn.pth"))
     model.eval()
