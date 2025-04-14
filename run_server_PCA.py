@@ -9,10 +9,10 @@ from HandPoseClass import *
 # 2. Load model & scaler
 # ----------------------------
 model = HandPoseFCNN_PCA()
-model.load_state_dict(torch.load("hand_pose_fcnn.pth"))
+model.load_state_dict(torch.load("hand_pose_fcnn_PCA.pth"))
 model.eval()
 
-scaler_y = joblib.load("scaler_y.save")  # Used to inverse scale outputs
+scaler = joblib.load("scaler_PCA.save")  # Used to inverse scale outputs
 
 # ----------------------------
 # 3. Setup TCP server
@@ -54,7 +54,7 @@ try:
 
         reconstructed_stand_joints = pca.inverse_transform(output)
         print(" reconstructed_stand_joints:",  reconstructed_stand_joints)
-        reconstructed_joints = scaler_y.inverse_transform(reconstructed_stand_joints).flatten()
+        reconstructed_joints = scaler.inverse_transform(reconstructed_stand_joints).flatten()
         print(" reconstructed_joints:",  reconstructed_joints)
    
          

@@ -84,7 +84,7 @@ def generate_pca_dataset(dataset_path, closure_columns, pca_variance_threshold=0
     return closure_data, synergy_data, scaler
 
 
-def remove_outliers_zscore(X, y, threshold):
+def remove_outliers_zscore(X, y, threshold = 2.5):
     z_scores = np.abs(zscore(y, axis=0))
     mask = (z_scores < threshold).all(axis=1)
     return X[mask], y[mask]
@@ -121,7 +121,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, epo
         if test_loss < best_loss:
             best_loss = test_loss
             best_model_state = model.state_dict()
-            torch.save(best_model_state, 'hand_pose_fcnn.pth')
+            torch.save(best_model_state, 'hand_pose_fcnn_PCA.pth')
 
         if epoch % 50 == 0:
             lr = optimizer.param_groups[0]['lr']
@@ -196,10 +196,11 @@ def plot_per_joint_mse(preds, targets):
 
 def run_training():
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-    X, y = generate_pca_dataset('last_dataset.csv', closure_columns)
+    X, y, scaler = generate_pca_dataset('last_dataset.csv', closure_columns)
+    joblib.dump(scaler, "scaler_PCA.save")
     X, y = remove_outliers_zscore(X, y)
     train_loader, test_loader = prepare_dataloaders(X, y)
-
+    
     model = HandPoseFCNN_PCA()
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
@@ -207,10 +208,10 @@ def run_training():
 
     train_losses, test_losses = train(model, train_loader, test_loader, criterion, optimizer, scheduler)
     plot_losses(train_losses, test_losses)
-    print("\nModel saved to hand_pose_fcnn.pth")
+    print("\nModel saved to hand_pose_fcnn_PCA.pth")
 
 def run_testing():
-    if not os.path.exists("hand_pose_fcnn.pth"):
+    if not os.path.exists("hand_pose_fcnn_PCA.pth"):
         print("Model not found! Please train it first.")
         return
 
@@ -220,7 +221,7 @@ def run_testing():
     _, test_loader = prepare_dataloaders(X, y)
     joblib.dump(scaler, "scaler_PCA.save")
     model = HandPoseFCNN_PCA()
-    model.load_state_dict(torch.load("hand_pose_fcnn.pth"))
+    model.load_state_dict(torch.load("hand_pose_fcnn_PCA.pth"))
     model.eval()
 
     criterion = nn.MSELoss()
