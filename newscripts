@@ -1,0 +1,215 @@
+# run_server.py
+import torch
+import torch.nn as nn
+import numpy as np
+import joblib
+import socket
+from HandPoseClass import *
+from scipy.spatial.transform import Rotation as R  # Import Rotation from scipy
+
+# ----------------------------
+# 2. Load model & scaler (same as before)
+# ----------------------------
+model = HandPoseFCNN_PCA()
+model.load_state_dict(torch.load("hand_pose_fcnn_PCA_cha.pth"))
+model.eval()
+
+scaler_y = joblib.load("scaler_PCA2.save")  # Used to inverse scale outputs
+pca = joblib.load('pca_joint.save') # Load PCA
+
+# ----------------------------
+# 3. Setup TCP server (same as before)
+# ----------------------------
+HOST = '127.0.0.1'
+PORT = 65432
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((HOST, PORT))
+server.listen(1)
+print(f"Server listening on {HOST}:{PORT} (Quaternion Mode)...") # Indicate Quaternion mode
+
+conn, addr = server.accept()
+print(f"Connected to {addr}")
+
+# ----------------------------
+# 4. Real-time communication loop
+# ----------------------------
+try:
+    while True:
+        data = conn.recv(1024)
+        if not data:
+            break
+
+        # Convert to float array (same as before)
+        inputs = np.frombuffer(data, dtype=np.float32)
+        if inputs.shape[0] != 4:
+            print("Expected 4 float inputs.")
+            continue
+
+        # Predict (same as before)
+        input_tensor = torch.FloatTensor(inputs.reshape(1, -1))
+        with torch.no_grad():
+            output = model(input_tensor).numpy()
+
+        # Inverse transform (same as before)
+        reconstructed_stand_joints = pca.inverse_transform(output)
+        reconstructed_joints_euler = scaler_y.inverse_transform(reconstructed_stand_joints).flatten() # Keep Euler name for now
+
+        # --- Quaternion Conversion ---
+        quaternions_list = []
+        for i in range(9): # 9 joints
+            euler_angles = reconstructed_joints_euler[i*3 : i*3 + 3] # Extract Euler angles for each joint (XYZ assumed order)
+            # Assuming your reconstructed_joints_euler is in XYZ Euler angles (degrees)
+            r = R.from_euler('xyz', euler_angles, degrees=True) # Create Rotation object
+            quat = r.as_quat() # Get quaternion (x, y, z, w order by default in scipy)
+            quaternions_list.extend(quat) # Append quaternion components to the list
+
+        reconstructed_quaternions = np.array(quaternions_list).astype(np.float32) # Convert to numpy array and float32
+
+        # --- Send Quaternions ---
+        conn.sendall(reconstructed_quaternions.tobytes()) # Send quaternion data
+
+        print("Sent Quaternions:", reconstructed_quaternions.tolist()) # Optional: print sent quaternions
+
+except Exception as e:
+    print("Error:", e)
+finally:
+    conn.close()
+    server.close()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+using System;
+using System.Net.Sockets;
+using System.Threading;
+using UnityEngine;
+
+namespace WeArt.Components
+{
+    public class LearningController : MonoBehaviour
+    {
+        [Header("Neural Hand Control")]
+        [Tooltip("Ordered: thumb1, thumb2, thumb3, index1, index2, index3, middle1, middle2, middle3")]
+        public Transform[] jointTransforms; // Assign in Inspector (should be 9)
+        public Transform palmTransform;     // Palm Transform for relative rotation
+
+        [Header("WeArt Thimbles")]
+        [SerializeField] private WeArtThimbleTrackingObject thumbThimble;
+        [SerializeField] private WeArtThimbleTrackingObject indexThimble;
+        [SerializeField] private WeArtThimbleTrackingObject middleThimble;
+
+        [Header("Socket Settings")]
+        public string serverIP = "127.0.0.1";
+        public int serverPort = 65432;
+
+        private TcpClient client;
+        private NetworkStream stream;
+        private Thread socketThread;
+        private float[] closureAbductionInput = new float[4]; // [thumbC, indexC, middleC, abduction]
+        private float[] receivedQuaternions = new float[36];  // 9 joints × 4 Quaternion components (x,y,z,w)
+        private bool newDataAvailable = false;
+        private bool isRunning = true;
+
+        void Start()
+        {
+            // Start background thread for socket
+            socketThread = new Thread(SocketLoop);
+            socketThread.IsBackground = true;
+            socketThread.Start();
+        }
+
+        void Update()
+        {
+            // Real-time input from WeArt thimbles
+            if (thumbThimble != null && indexThimble != null && middleThimble != null)
+            {
+                closureAbductionInput[0] = thumbThimble.Closure.Value;
+                closureAbductionInput[1] = indexThimble.Closure.Value;
+                closureAbductionInput[2] = middleThimble.Closure.Value;
+                closureAbductionInput[3] = thumbThimble.Abduction.Value;
+            }
+
+            // Apply predicted joint rotations (using Quaternions)
+            if (newDataAvailable)
+            {
+                for (int i = 0; i < jointTransforms.Length; i++)
+                {
+                    if (jointTransforms[i] != null)
+                    {
+                        int index = i * 4; // Quaternion components are sequential
+                        Quaternion predictedRotation = new Quaternion(
+                            receivedQuaternions[index],     // x
+                            receivedQuaternions[index + 1], // y
+                            receivedQuaternions[index + 2], // z
+                            receivedQuaternions[index + 3]  // w
+                        );
+
+                        jointTransforms[i].rotation = palmTransform.rotation * predictedRotation;
+                    }
+                }
+                newDataAvailable = false;
+            }
+        }
+
+        void SocketLoop()
+        {
+            try
+            {
+                client = new TcpClient(serverIP, serverPort);
+                stream = client.GetStream();
+                Debug.Log("Connected to Python server (Quaternion Mode).");
+
+                byte[] inputBuffer = new byte[4 * 4];   // 4 floats (input)
+                byte[] outputBuffer = new byte[36 * 4]; // 36 floats (output - 9 Quaternions * 4 floats)
+
+                while (isRunning)
+                {
+                    // Prepare input: 4 floats → byte array
+                    Buffer.BlockCopy(closureAbductionInput, 0, inputBuffer, 0, inputBuffer.Length);
+                    stream.Write(inputBuffer, 0, inputBuffer.Length);
+
+                    // Read full 144 bytes (36 floats) - Quaternion data
+                    int totalRead = 0;
+                    while (totalRead < outputBuffer.Length)
+                    {
+                        int bytesRead = stream.Read(outputBuffer, totalRead, outputBuffer.Length - totalRead);
+                        if (bytesRead == 0) throw new Exception("Disconnected from server.");
+                        totalRead += bytesRead;
+                    }
+
+                    // Convert to float array (Quaternions)
+                    float[] predictions = new float[36];
+                    Buffer.BlockCopy(outputBuffer, 0, predictions, 0, outputBuffer.Length);
+                    receivedQuaternions = predictions;
+                    newDataAvailable = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Socket error: " + e.Message);
+            }
+        }
+
+        void OnApplicationQuit()
+        {
+            isRunning = false;
+            stream?.Close();
+            client?.Close();
+            socketThread?.Abort();
+        }
+    }
+}
