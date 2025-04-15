@@ -5,6 +5,12 @@ using UnityEngine;
 
 namespace WeArt.Components
 {
+    [System.Serializable]
+    public class JointEulerAngles
+    {
+        public Vector3[] jointEulerAngles = new Vector3[9];
+    }
+
     public class LearningController : MonoBehaviour
     {
         [Header("Neural Hand Control")]
@@ -21,33 +27,26 @@ namespace WeArt.Components
         public string serverIP = "127.0.0.1";
         public int serverPort = 65432;
 
-        [Header("Joint Constraints")]
-        public float maxAngleChangePerFrame = 30f;
-        public float thumbFlexionRange = 80f;
-        public float fingerFlexionRange = 90f;
-        public float abductionRange = 30f;
+        [Header("Predicted Joint Angles (Read-Only)")]
+        public JointEulerAngles debugJointAngles = new JointEulerAngles();
+
+        [Header("Real-Time Input Debug")]
+        public float thumbClosure;
+        public float indexClosure;
+        public float middleClosure;
+        public float thumbAbduction;
 
         private TcpClient client;
         private NetworkStream stream;
         private Thread socketThread;
-        private float[] closureAbductionInput = new float[4];
-        private float[] receivedJointAngles = new float[27];
-        private Quaternion[] previousJointRotations = new Quaternion[9];
+        private float[] closureAbductionInput = new float[4]; // [thumbC, indexC, middleC, abduction]
+        private float[] receivedJointAngles = new float[27];  // 9 joints × 3 Euler angles
         private bool newDataAvailable = false;
         private bool isRunning = true;
-        private object dataLock = new object();
 
         void Start()
         {
-            // Initialize previous rotations
-            for (int i = 0; i < jointTransforms.Length; i++)
-            {
-                if (jointTransforms[i] != null)
-                {
-                    previousJointRotations[i] = jointTransforms[i].localRotation;
-                }
-            }
-
+            // Start background thread for socket
             socketThread = new Thread(SocketLoop);
             socketThread.IsBackground = true;
             socketThread.Start();
@@ -55,24 +54,28 @@ namespace WeArt.Components
 
         void Update()
         {
-            // Get real-time input from WeArt thimbles
+            // Real-time input from WeArt thimbles
             if (thumbThimble != null && indexThimble != null && middleThimble != null)
             {
                 closureAbductionInput[0] = thumbThimble.Closure.Value;
                 closureAbductionInput[1] = indexThimble.Closure.Value;
                 closureAbductionInput[2] = middleThimble.Closure.Value;
                 closureAbductionInput[3] = thumbThimble.Abduction.Value;
+
+                // Update values for Inspector
+                thumbClosure = closureAbductionInput[0];
+                indexClosure = closureAbductionInput[1];
+                middleClosure = closureAbductionInput[2];
+                thumbAbduction = closureAbductionInput[3];
             }
 
-            // Apply predicted joint rotations with thread-safe access
+            // Apply predicted joint rotations
             if (newDataAvailable)
             {
-                lock (dataLock)
+                for (int i = 0; i < jointTransforms.Length; i++)
                 {
-                    for (int i = 0; i < jointTransforms.Length; i++)
+                    if (jointTransforms[i] != null)
                     {
-                        if (jointTransforms[i] == null) continue;
-
                         int index = i * 3;
                         Vector3 predictedEuler = new Vector3(
                             receivedJointAngles[index],
@@ -80,87 +83,14 @@ namespace WeArt.Components
                             receivedJointAngles[index + 2]
                         );
 
-                        // Create target rotation in palm space
-                        Quaternion targetRotation = Quaternion.Euler(predictedEuler);
-                        
-                        // Apply joint-specific constraints
-                        targetRotation = ApplyJointConstraints(i, targetRotation);
-                        
-                        // Smooth rotation changes
-                        Quaternion smoothedRotation = SmoothRotation(previousJointRotations[i], targetRotation);
-                        
-                        // Apply final rotation relative to palm
-                        jointTransforms[i].rotation = palmTransform.rotation * smoothedRotation;
-                        previousJointRotations[i] = smoothedRotation;
+                        jointTransforms[i].rotation = palmTransform.rotation * Quaternion.Euler(predictedEuler);
+
+                        // Save for inspector visualization
+                        debugJointAngles.jointEulerAngles[i] = predictedEuler;
                     }
-                    newDataAvailable = false;
                 }
+                newDataAvailable = false;
             }
-        }
-
-        private Quaternion SmoothRotation(Quaternion from, Quaternion to)
-        {
-            float angle = Quaternion.Angle(from, to);
-            if (angle > maxAngleChangePerFrame)
-            {
-                float t = maxAngleChangePerFrame / angle;
-                return Quaternion.Slerp(from, to, t);
-            }
-            return to;
-        }
-
-        private Quaternion ApplyJointConstraints(int jointIndex, Quaternion rotation)
-        {
-            Vector3 euler = rotation.eulerAngles;
-            
-            // Normalize angles to -180 to 180 range
-            euler.x = NormalizeAngle(euler.x);
-            euler.y = NormalizeAngle(euler.y);
-            euler.z = NormalizeAngle(euler.z);
-
-            // Apply joint-specific constraints
-            switch (jointIndex)
-            {
-                // Thumb joints
-                case 0: // thumb1 (CMC)
-                    euler.x = Mathf.Clamp(euler.x, -thumbFlexionRange, thumbFlexionRange);
-                    euler.y = Mathf.Clamp(euler.y, -abductionRange, abductionRange);
-                    euler.z = Mathf.Clamp(euler.z, -30f, 30f);
-                    break;
-                    
-                case 1: // thumb2 (MCP)
-                case 2: // thumb3 (IP)
-                    euler.x = Mathf.Clamp(euler.x, 0f, thumbFlexionRange);
-                    euler.y = Mathf.Clamp(euler.y, -15f, 15f);
-                    euler.z = Mathf.Clamp(euler.z, -15f, 15f);
-                    break;
-                    
-                // Finger joints (index and middle)
-                case 3: // index1 (MCP)
-                case 6: // middle1 (MCP)
-                    euler.x = Mathf.Clamp(euler.x, -20f, 20f);
-                    euler.y = Mathf.Clamp(euler.y, -abductionRange, abductionRange);
-                    euler.z = Mathf.Clamp(euler.z, -fingerFlexionRange, 0f);
-                    break;
-                    
-                case 4: // index2 (PIP)
-                case 5: // index3 (DIP)
-                case 7: // middle2 (PIP)
-                case 8: // middle3 (DIP)
-                    euler.x = Mathf.Clamp(euler.x, -10f, 10f);
-                    euler.y = Mathf.Clamp(euler.y, -10f, 10f);
-                    euler.z = Mathf.Clamp(euler.z, -fingerFlexionRange, 0f);
-                    break;
-            }
-            
-            return Quaternion.Euler(euler);
-        }
-
-        private float NormalizeAngle(float angle)
-        {
-            while (angle > 180f) angle -= 360f;
-            while (angle < -180f) angle += 360f;
-            return angle;
         }
 
         void SocketLoop()
@@ -171,40 +101,34 @@ namespace WeArt.Components
                 stream = client.GetStream();
                 Debug.Log("Connected to Python server.");
 
-                byte[] inputBuffer = new byte[4 * 4];
-                byte[] outputBuffer = new byte[27 * 4];
+                byte[] inputBuffer = new byte[4 * 4];   // 4 floats
+                byte[] outputBuffer = new byte[27 * 4]; // 27 floats
 
                 while (isRunning)
                 {
-                    // Send input
+                    // Prepare input: 4 floats → byte array
                     Buffer.BlockCopy(closureAbductionInput, 0, inputBuffer, 0, inputBuffer.Length);
                     stream.Write(inputBuffer, 0, inputBuffer.Length);
 
-                    // Receive output
+                    // Read full 108 bytes (27 floats)
                     int totalRead = 0;
-                    while (totalRead < outputBuffer.Length && isRunning)
+                    while (totalRead < outputBuffer.Length)
                     {
                         int bytesRead = stream.Read(outputBuffer, totalRead, outputBuffer.Length - totalRead);
-                        if (bytesRead == 0) throw new Exception("Server disconnected");
+                        if (bytesRead == 0) throw new Exception("Disconnected from server.");
                         totalRead += bytesRead;
                     }
 
-                    // Update received data with thread safety
-                    lock (dataLock)
-                    {
-                        Buffer.BlockCopy(outputBuffer, 0, receivedJointAngles, 0, outputBuffer.Length);
-                        newDataAvailable = true;
-                    }
+                    // Convert to float array
+                    float[] predictions = new float[27];
+                    Buffer.BlockCopy(outputBuffer, 0, predictions, 0, outputBuffer.Length);
+                    receivedJointAngles = predictions;
+                    newDataAvailable = true;
                 }
             }
             catch (Exception e)
             {
                 Debug.LogError("Socket error: " + e.Message);
-            }
-            finally
-            {
-                stream?.Close();
-                client?.Close();
             }
         }
 
@@ -213,13 +137,7 @@ namespace WeArt.Components
             isRunning = false;
             stream?.Close();
             client?.Close();
-            
-            if (socketThread != null && socketThread.IsAlive)
-            {
-                socketThread.Join(100); // Give 100ms to clean up
-                if (socketThread.IsAlive)
-                    socketThread.Abort();
-            }
+            socketThread?.Abort();
         }
     }
 }
