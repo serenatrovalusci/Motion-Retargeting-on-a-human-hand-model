@@ -9,10 +9,10 @@ from HandPoseClass import *
 # 2. Load model & scaler
 # ----------------------------
 model = HandPoseFCNN_PCA()
-model.load_state_dict(torch.load("hand_pose_fcnn_PCA.pth"))
+model.load_state_dict(torch.load("hand_pose_fcnn_PCA_16.pth"))
 model.eval()
 
-scaler = joblib.load("scaler_PCA.save")  # Used to inverse scale outputs
+scaler = joblib.load("scaler_PCA_16.save")  # Used to inverse scale outputs
 
 # ----------------------------
 # 3. Setup TCP server
@@ -47,7 +47,7 @@ try:
         with torch.no_grad():
             output = model(input_tensor).numpy()
         # Inverse transform to joint space
-        pca = joblib.load('pca_joint.save')
+        pca = joblib.load('pca_joint_16.save')
 
         print("Model output shape:", output.shape)
         print("Expected by PCA:", pca.n_components_)
@@ -62,37 +62,37 @@ try:
       # Bound the thumb joints [0], [1], [2] to avoid negative values
         # You can customize thresholds based on what's safe for your avatar
 
-        min_thumb_angle = 110.0  # or use a small positive value if 0 is still problematic
-        max_thumb_angle = 165.0  # example max, adjust based on your range
-        min_middle_angle = 155.0  # or use a small positive value if 0 is still problematic
-        max_middle_angle = 162.0
+        # min_thumb_angle = 110.0  # or use a small positive value if 0 is still problematic
+        # max_thumb_angle = 165.0  # example max, adjust based on your range
+        # min_middle_angle = 155.0  # or use a small positive value if 0 is still problematic
+        # max_middle_angle = 162.0
         # Apply clamping to thumb 1,2,3
-        reconstructed_joints[1] = np.clip(reconstructed_joints[1], min_thumb_angle, max_thumb_angle)
-        reconstructed_joints[4] = np.clip(reconstructed_joints[4], min_thumb_angle, max_thumb_angle)
-        reconstructed_joints[7] = np.clip(reconstructed_joints[7], min_thumb_angle, max_thumb_angle)
+        # reconstructed_joints[1] = np.clip(reconstructed_joints[1], min_thumb_angle, max_thumb_angle)
+        # reconstructed_joints[4] = np.clip(reconstructed_joints[4], min_thumb_angle, max_thumb_angle)
+        # reconstructed_joints[7] = np.clip(reconstructed_joints[7], min_thumb_angle, max_thumb_angle)
         #reconstructed_joints[26] = np.clip(reconstructed_joints[26], min_middle_angle, max_middle_angle)
 
         # Fix index 
         #reconstructed_joints[13] = -90.0
         
         # Change sign index to z component of 2,3
-        reconstructed_joints[14] = -reconstructed_joints[14]
-        reconstructed_joints[17] = -reconstructed_joints[17]
+        # reconstructed_joints[14] = -reconstructed_joints[14]
+        # reconstructed_joints[17] = -reconstructed_joints[17]
 
-        if input_tensor[0, 0].item() == 0.0 and input_tensor[0, 3].item() < 0.87 :
-           reconstructed_joints[1] = -reconstructed_joints[1]
-           reconstructed_joints[4] = -reconstructed_joints[4]
-           reconstructed_joints[7] = -reconstructed_joints[7]
+        # if input_tensor[0, 0].item() == 0.0 and input_tensor[0, 3].item() < 0.87 :
+        #    reconstructed_joints[1] = -reconstructed_joints[1]
+        #    reconstructed_joints[4] = -reconstructed_joints[4]
+        #    reconstructed_joints[7] = -reconstructed_joints[7]
          
         # middle post processing joint 3
-        print(input_tensor)
+        # print(input_tensor)
 
-        if input_tensor[0, 2].item() > 0.9:
-           #reconstructed_joints[25] = 95.0
-           reconstructed_joints[24] = -70.0
-           reconstructed_joints[26] = np.clip(reconstructed_joints[26], min_middle_angle, max_middle_angle)
-        if input_tensor[0, 2].item() > 0.85:
-           reconstructed_joints[25] = 95.0
+        # if input_tensor[0, 2].item() > 0.9:
+        #    #reconstructed_joints[25] = 95.0
+        #    reconstructed_joints[24] = -70.0
+        #    reconstructed_joints[26] = np.clip(reconstructed_joints[26], min_middle_angle, max_middle_angle)
+        # if input_tensor[0, 2].item() > 0.85:
+        #    reconstructed_joints[25] = 95.0
          
         # Inverse transform to real values
         #real_output = scaler_y.inverse_transform(output).flatten()

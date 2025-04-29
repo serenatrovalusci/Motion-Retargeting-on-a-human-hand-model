@@ -37,7 +37,7 @@ class HandPoseFCNN(nn.Module):
         return self.net(x)
     
 class HandPoseFCNN_PCA(nn.Module):
-    def __init__(self, input_dim=4, output_dim=9):
+    def __init__(self, input_dim=4, output_dim=16):
         super().__init__()
         self.net = nn.Sequential(
     nn.Linear(input_dim, 512),
