@@ -1,4 +1,4 @@
-# ✅ FINAL run_server_fixed.py for output_dim=42
+# FINAL run_server_fixed.py for output_dim=42
 # Thumb = 0–8 (sin) + 9–17 (cos)
 # PIP/DIP = sin/cos decoded at correct indices: 13,14,16,17,25,26
 
