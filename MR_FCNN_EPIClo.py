@@ -1,4 +1,4 @@
-# ✅ FINAL MR_FCNN_fixed.py
+#  FINAL MR_FCNN_fixed
 # - output_dim = 42
 # - Thumb: joints 0–8 → sin/cos (18 outputs)
 # - Index PIP (13/14), DIP (16/17), Middle DIP (25/26) → sin/cos (6 joints × 2 = 12 outputs)
@@ -15,6 +15,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import joblib
 from HandPoseClass import *
+import os
+import matplotlib.pyplot as plt
+
 
 def load_data(dataset_path, closure_columns, z_thresh=2.5):
     data = pd.read_csv(dataset_path)
@@ -91,7 +94,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, epochs=300):
         if test_loss < best_loss:
             best_loss = test_loss
             best_model_state = model.state_dict()
-            torch.save(best_model_state, 'hand_pose_fcnn.pth')
+            torch.save(best_model_state, 'hand_pose_fcnn_epic_nopca.pth')
 
         if epoch % 50 == 0:
             lr = optimizer.param_groups[0]['lr']
@@ -130,5 +133,19 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
     train_losses, test_losses = train(model, train_loader, test_loader, optimizer, scheduler)
-    joblib.dump(scaler_y, "scaler_y.save")
+    # Save loss graph
+    os.makedirs("plots", exist_ok=True)
+    plt.figure(figsize=(8, 5))
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(test_losses, label="Test Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE Loss")
+    plt.title("Training Loss Curve")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("plots/loss_curve_nopca.png")
+    plt.close()
+
+    joblib.dump(scaler_y, "scaler_y_epic_nopca.save")
     print("Training complete. Model saved.")

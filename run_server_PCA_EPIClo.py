@@ -5,11 +5,11 @@ import joblib
 from HandPoseClass import *
 
 model = HandPoseFCNN(input_dim=4, output_dim=11)
-model.load_state_dict(torch.load("hand_pose_fcnn_PCA.pth"))
+model.load_state_dict(torch.load("hand_pose_fcnn_PCA_11_new.pth"))
 model.eval()
 
-scaler = joblib.load("scaler_joint.save")
-pca = joblib.load("pca_joint.save")
+scaler = joblib.load("scaler_joint_11.save")
+pca = joblib.load("pca_joint_11.save")
 
 HOST = '127.0.0.1'
 PORT = 65432

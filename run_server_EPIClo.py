@@ -9,10 +9,10 @@ import socket
 from HandPoseClass import *
 
 model = HandPoseFCNN(input_dim=4, output_dim=42)
-model.load_state_dict(torch.load("hand_pose_fcnn.pth"))
+model.load_state_dict(torch.load("hand_pose_fcnn_epic_nopca.pth"))
 model.eval()
 
-scaler_y = joblib.load("scaler_y.save")
+scaler_y = joblib.load("scaler_y_epic_nopca.save")
 
 HOST = '127.0.0.1'
 PORT = 65432
