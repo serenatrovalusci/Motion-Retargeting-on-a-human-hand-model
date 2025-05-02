@@ -9,7 +9,7 @@ import socket
 from HandPoseClass import *
 
 model = HandPoseFCNN(input_dim=4, output_dim=42)
-model.load_state_dict(torch.load("hand_pose_fcnn.pth"))
+model.load_state_dict(torch.load("FCNN_weights.pth"))
 model.eval()
 
 scaler_y = joblib.load("scaler_y.save")
