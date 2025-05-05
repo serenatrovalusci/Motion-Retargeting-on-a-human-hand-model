@@ -18,7 +18,7 @@ def generate_sincos_dataset(y):
     raw = y[:, raw_indices]
     return np.concatenate([thumb, fix, raw], axis=1)
 
-def generate_pca_dataset(csv_path, closure_columns, pca_var=0.97):
+def generate_pca_dataset(csv_path, closure_columns, pca_var=0.995):
     data = pd.read_csv(csv_path)
     data.columns = data.columns.str.strip()
     y = data[[c for c in data.columns if c not in closure_columns]].values
@@ -88,6 +88,7 @@ def mse_loss(preds, targets):
 if __name__ == "__main__":
     closure_cols = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     X, Y_pca = generate_pca_dataset("dataset.csv", closure_cols)
+    print("pca",Y_pca.shape[1])
     train_loader, test_loader = prepare_dataloaders(X, Y_pca)
     model = HandPoseFCNN(input_dim=4, output_dim=Y_pca.shape[1])
     optim_ = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
