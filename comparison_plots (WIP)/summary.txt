@@ -1,0 +1,4 @@
+Global MAE (No PCA): 1.4103
+Global RMSE (No PCA): 7.4230
+Global MAE (PCA): 5.9590
+Global RMSE (PCA): 17.3522
