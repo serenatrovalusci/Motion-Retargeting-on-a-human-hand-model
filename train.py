@@ -15,30 +15,32 @@ import argparse
 import os
 
 
-def generate_sincos_dataset(Y):
-    thumb = np.concatenate([np.sin(np.deg2rad(Y[:, :9])), np.cos(np.deg2rad(Y[:, :9]))], axis=1)
-    fix_indices = [13, 14, 16, 17, 25, 26]
-    fix = np.concatenate([np.sin(np.deg2rad(Y[:, fix_indices])), np.cos(np.deg2rad(Y[:, fix_indices]))], axis=1)
-    raw_indices = [i for i in range(27) if i not in list(range(9)) + fix_indices]
-    raw = Y[:, raw_indices]
-    return np.concatenate([thumb, fix, raw], axis=1)
+def generate_sincos_dataset(Y, fix_indices):
+    # In questo modo avremo un dataset tipo: [sin1, cos1, sin2, cos2, ang3, ang4, ...] 
+    # l'ordine degli angoli non è mischiato, i primi sono del pollice, poi ci sono quelli dell'indice ecc...
+    
+    mixed_columns = []
+    for i in range(Y.shape[1]):
+        if i in fix_indices:
+            sin_val = np.sin(np.deg2rad(Y[:, [i]]))
+            cos_val = np.cos(np.deg2rad(Y[:, [i]]))
+            mixed_columns.extend([sin_val, cos_val])
+        else:
+            mixed_columns.append(Y[:, [i]])
+    return np.concatenate(mixed_columns, axis=1)
 
 
-def load_data(csv_path, closure_columns):
+def load_data(csv_path, closure_columns, fix_indices):
+    print("Loading Dataset from csv file...")
     data = pd.read_csv(csv_path)
     data.columns = data.columns.str.strip()
+    data = data.iloc[:, 1:] # remuve the first column (time)
     joint_columns = [c for c in data.columns if c not in closure_columns]
     X = data[closure_columns].values
     Y = data[joint_columns].values
 
-    print(f"Joint angles count: {Y.shape[1]}")
-    print(f"Closure parameters count: {X.shape[1]}")
-    print("Before outlier removal:", X.shape, Y.shape)
-
     X, Y = remove_outliers_zscore(X, Y, z_thresh)
-    print("After outlier removal:", X.shape, Y.shape)
-
-    Y_sincos = generate_sincos_dataset(Y)
+    Y_sincos = generate_sincos_dataset(Y, fix_indices)
 
     scaler = StandardScaler().fit(Y_sincos)
     Y_scaled = scaler.transform(Y_sincos)
@@ -46,12 +48,19 @@ def load_data(csv_path, closure_columns):
     return X, Y_scaled, scaler
 
 
-def generate_PCA_dataset(Y, pca_var=0.995):
+def fit_pca(Y, pca_var=0.995):
     pca = PCA(n_components=pca_var).fit(Y)
     Y_pca = pca.transform(Y)
-    print("PCA components:", Y_pca.shape[1])
-    return Y_pca, pca
+    print(f"Numbers of PCA components related to a variance of {pca_var}: {Y_pca.shape[1]}\n")
+    return pca
 
+def transform_to_pca(y_tensor, pca):
+    # Convert numpy components to PyTorch tensors once
+    components = torch.tensor(pca.components_, dtype=y_tensor.dtype, device=y_tensor.device)
+    mean = torch.tensor(pca.mean_, dtype=y_tensor.dtype, device=y_tensor.device)
+
+    # Apply PCA transformation manually (centered dot-product)
+    return (y_tensor - mean) @ components.T
 
 def remove_outliers_zscore(X, Y, threshold):
     z_scores = np.abs(zscore(Y, axis=0))
@@ -86,7 +95,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epoch
             best_model_state = model.state_dict()
             torch.save(best_model_state, save_path)
 
-        if epoch % 50 == 0:
+        if epoch % 20 == 0:
             lr = optimizer.param_groups[0]['lr']
             print(f"Epoch {epoch:3d} | LR: {lr:.5f} | Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}")
 
@@ -115,18 +124,22 @@ def mse_loss(preds, targets):
     return torch.nn.functional.mse_loss(preds, targets)
 
 
-def weighted_mse_loss(preds, targets):
+def weighted_mse_loss(preds, targets, fix_indices):
     weights = torch.ones_like(preds)
-    weights[:, :18] = 2.0   # Thumb (sin/cos)
-    weights[:, 18:30] = 2.0 # PIP/DIP (sin/cos)
+    mixed_col = 0
+    for i in range(45):
+        if i in fix_indices:
+            weights[:, mixed_col: mixed_col + 1] = 2.0
+            mixed_col += 2
+        else:
+            mixed_col += 1
     return torch.mean(weights * (preds - targets) ** 2)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with or without PCA.")
-    parser.add_argument('--no_pca', action='store_true', help='Apply PCA to the target dataset')
-    parser.add_argument('--use_pca', action='store_true', help='Apply PCA to the target dataset')
-    parser.add_argument('--pca_variance', type=float, default=0.995, help='Explained variance for PCA')
+    parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
+    parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
@@ -138,63 +151,76 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    print("Choose what to do: python train.py... --use_pca,--no_pca, --usepca --plot_mse, ")
+    print("\nHelping prompt : ")
+    print("python train.py --model FCNN --pca_variance 0.995 --save_model FCNN_Example \n")
 
-    if args.use_pca or args.no_pca:
-        closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-        z_thresh = args.z_thresh
+    print("----------- Training Configuration -----------")
+    print(f"Using PCA in loss:         {'Yes' if args.pca_variance < 1.0 else 'No'}")
+    print(f"PCA explained variance:    {args.pca_variance if args.pca_variance < 1.0 else 'N/A'}")
+    print(f"Z-score outlier threshold: {args.z_thresh}")
+    print(f"Epochs:                    {args.epochs}")
+    print(f"Batch size:                {args.batch_size}")
+    print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
+    print("---------------------------------------------")
 
-        X, Y_scaled, scaler_y = load_data('dataset.csv', closure_columns)
+    closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
+    z_thresh = args.z_thresh
+    # angoli fixati per una performance migliore
+    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
-        if args.use_pca:
-            Y_final, pca = generate_PCA_dataset(Y_scaled, pca_var=args.pca_variance)
-            joblib.dump(pca, "reconstruction_pca.save")
-            joblib.dump(scaler_y, "scaler_y_pca.save")
-            loss_type = mse_loss
-            save_path = args.save_model if args.save_model else "FCNN_PCA.pth"
-        else:
-            Y_final = Y_scaled
-            joblib.dump(scaler_y, "scaler_y.save")
-            loss_type = weighted_mse_loss
-            save_path = args.save_model if args.save_model else "FCNN.pth"
+    X, Y_scaled, scaler_y = load_data('dataset.csv', closure_columns, fix_indices)
 
-        output_dim = Y_final.shape[1]
+    # Save scaler
+    joblib.dump(scaler_y, "scaler_y.save")
 
-        train_loader, test_loader = prepare_dataloaders(X, Y_final, batch_size=args.batch_size)
+    if args.pca_variance < 1.0:
+        # use PCA
+        pca = fit_pca(Y_scaled, pca_var=args.pca_variance)
+        joblib.dump(pca, "reconstruction_pca.save")
+        loss_type = mse_loss
+        save_path = args.save_model if args.save_model else args.model+"_PCA.pth"
+    else:
+        # do not use PCA
+        pca = None
+        loss_type = weighted_mse_loss
+        save_path = args.save_model if args.save_model else args.model+".pth"
 
-        model = HandPoseFCNN(input_dim=X.shape[1], output_dim=output_dim)
-        optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
+    output_dim = Y_scaled.shape[1]
 
-        train_losses, test_losses = train(
-            model, train_loader, test_loader,
-            optimizer, scheduler,
-            loss_fn=loss_type,
-            epochs=args.epochs,
-            save_path=save_path
-        )
+    train_loader, test_loader = prepare_dataloaders(X, Y_scaled, batch_size=args.batch_size)
 
-        if args.plot_mse:
+    if args.model == 'FCNN':
+        model = HandPoseFCNN(input_dim=4, output_dim=output_dim)
+    elif args.model == 'Transformer':
+        model = HandPoseTransformer(input_dim=4, output_dim=output_dim) #fix_indices
+    
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
-            os.makedirs("plots", exist_ok=True)
-            plt.figure(figsize=(10, 5))
-            plt.plot(train_losses, label='Train Loss')
-            plt.plot(test_losses, label='Test Loss')
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
+    train_losses, test_losses = train(
+        model, train_loader, test_loader,
+        optimizer, scheduler,
+        loss_fn=loss_type,
+        epochs=args.epochs,
+        save_path=save_path
+    )
 
-            if args.use_pca:
-                plt.title('PCA MSE Loss Curves')
-            else:
-                plt.title('MSE Loss Curves')
+    if args.plot_mse:
 
-            plt.legend()
-            plt.grid(True)
-            plt.tight_layout()
-            plt.savefig("plots/mse_loss_curve.png")
-            plt.close()
-            
+        os.makedirs("plots", exist_ok=True)
+        plt.figure(figsize=(10, 5))
+        plt.plot(train_losses, label='Train Loss')
+        plt.plot(test_losses, label='Test Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.title('MSE Loss Curve (PCA in loss)' if args.use_pca else 'Weighted MSE Loss Curve')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig("plots/mse_loss_curve.png")
+        plt.close()
+        
 
 
-        print("Training complete. Model saved to:", save_path)
-        print(f"Best test loss: {min(test_losses):.6f}")
+    print("Training complete. Model saved to:", save_path)
+    print(f"Best test loss: {min(test_losses):.6f}")
