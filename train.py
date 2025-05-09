@@ -75,16 +75,16 @@ def prepare_dataloaders(X, Y, batch_size=64):
     return train_loader, test_loader
 
 
-def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epochs=300, save_path="FCNN_PCA.pth"):
+def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epochs=300, save_path="FCNN_PCA.pth", fix_indices=[]):
     train_losses, test_losses = [], []
     best_loss, best_model_state = float('inf'), None
 
     for epoch in range(epochs):
         model.train()
-        train_loss = sum_step_loss(model, train_loader, loss_fn, optimizer, training=True)
+        train_loss = sum_step_loss(model, train_loader, loss_fn, optimizer, training=True, fix_indices=fix_indices)
 
         model.eval()
-        test_loss = sum_step_loss(model, test_loader, loss_fn, training=False)
+        test_loss = sum_step_loss(model, test_loader, loss_fn, training=False, fix_indices=fix_indices  )
 
         scheduler.step(test_loss)
         train_losses.append(train_loss)
@@ -105,11 +105,11 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epoch
     return train_losses, test_losses
 
 
-def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False):
+def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_indices=None):
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
-        loss = loss_fn(preds, yb)
+        loss = loss_fn(preds, yb, fix_indices)
 
         if training:
             optimizer.zero_grad()
@@ -166,9 +166,9 @@ if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     # angoli fixati per una performance migliore
-    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
+    fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
-    X, Y_scaled, scaler_y = load_data('dataset.csv', closure_columns, fix_indices)
+    X, Y_scaled, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
 
     # Save scaler
     joblib.dump(scaler_y, "scaler_y.save")
@@ -202,7 +202,8 @@ if __name__ == "__main__":
         optimizer, scheduler,
         loss_fn=loss_type,
         epochs=args.epochs,
-        save_path=save_path
+        save_path=save_path,
+        fix_indices=fix_Indices
     )
 
     if args.plot_mse:
