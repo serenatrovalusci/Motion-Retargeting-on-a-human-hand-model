@@ -29,36 +29,9 @@ class HandPoseFCNN(nn.Module):
     def forward(self, x):
         return self.net(x)
     
-class HandPoseFCNN_PCA(nn.Module):
-    def __init__(self, input_dim=4, output_dim=9):
-        super().__init__()
-        self.net = nn.Sequential(
-    nn.Linear(input_dim, 512),
-    nn.LeakyReLU(),
-    nn.BatchNorm1d(512),
-
-    nn.Linear(512, 256),
-    nn.LeakyReLU(),
-    nn.Dropout(0.3),
-
-    nn.Linear(256, 128),
-    nn.LeakyReLU(),
-    nn.Dropout(0.3),
-
-    nn.Linear(128, 64),
-    nn.LeakyReLU(),
-    nn.BatchNorm1d(64),
-
-    nn.Linear(64, output_dim)
-
-        )
-
-    def forward(self, x):
-        return self.net(x)
-    
     
 class HandPoseTransformer(nn.Module):
-    def __init__(self, input_dim=4, output_dim=27, d_model=128, num_heads=8, 
+    def __init__(self, input_dim=4, output_dim=27, fix_indices=[], d_model=128, num_heads=8, 
                  num_layers=4, dim_feedforward=512, dropout=0.1):
         super().__init__()
         
@@ -82,17 +55,49 @@ class HandPoseTransformer(nn.Module):
         )
         self.transformer = nn.TransformerEncoder(encoder_layers, num_layers)
         
-        # Output Decoding anatomico dinamico
+        # calcolo delle dimensioni di output delle testate
+        thu = 0
+        ind = 0
+        mid = 0
+        rin = 0
+        pin = 0
+        for i in range(45):
+            if i<9:
+                if i in fix_indices:
+                    thu += 2
+                else:
+                    thu += 1
+            elif i<18:
+                if i in fix_indices:
+                    ind += 2
+                else:
+                    ind += 1
+            elif i<27:
+                if i in fix_indices:
+                    mid += 2
+                else:
+                    mid += 1
+            elif i<36:
+                if i in fix_indices:
+                    rin += 2
+                else:
+                    rin += 1
+            else:
+                if i in fix_indices:
+                    pin += 2
+                else:
+                    pin += 1
+        #print(f" thumb={thu}, index={ind}, middle={mid}, ring={rin}, pinky={pin}")
+
+        # Output Decoding anatomico
         self.output_heads = nn.ModuleDict({
-            'thumb': FingerHead(d_model, 9),    # 3 falangi × 3 assi
-            'index': FingerHead(d_model, 9),    # 3 falangi × 3 assi
-            'middle': FingerHead(d_model, 9)    # 3 falangi × 3 assi
+            'thumb': FingerHead(d_model, thu),    
+            'index': FingerHead(d_model, ind),    
+            'middle': FingerHead(d_model, mid),    
+            'ring': FingerHead(d_model, rin),    
+            'pinky': FingerHead(d_model, pin)    
         })
 
-        # Dynamic Output
-        if output_dim != 27:
-            self.dyn_out = nn.Linear(27,output_dim)
-        
 
     def forward(self, x):
         # x shape: [batch_size, 4]
@@ -112,13 +117,11 @@ class HandPoseTransformer(nn.Module):
         thumb = self.output_heads['thumb'](encoded)
         index = self.output_heads['index'](encoded)
         middle = self.output_heads['middle'](encoded)
+        ring = self.output_heads['ring'](encoded)
+        pinky = self.output_heads['pinky'](encoded)
         
         # 5. Combina gli output 
-        output = torch.cat([thumb, index, middle], dim=-1)  # [batch_size, 27]
-
-        # 6. Output Dinamico
-        if self.dyn_out:
-            output = self.dyn_out(output)
+        output = torch.cat([thumb, index, middle, ring, pinky], dim=-1)  # [batch_size, 45+fixed]
         
         return output
 
@@ -126,17 +129,14 @@ class FingerHead(nn.Module):
     """Testa di output per ogni dito"""
     def __init__(self, d_model, output_dim):
         super().__init__()
-        self.joint_decoders = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(d_model, d_model//2),
-                nn.GELU(),
-                nn.Linear(d_model//2, 3)  # 3 valori x,y,z per ogni falange
-            ) for _ in range(3)  # 3 falange per dito
-        ])
+        self.decoder = nn.Sequential(
+                                nn.Linear(d_model, d_model//2),
+                                nn.GELU(),
+                                nn.Linear(d_model//2, output_dim) 
+                                ) 
     
     def forward(self, x):
-        outputs = [decoder(x) for decoder in self.joint_decoders]
-        return torch.cat(outputs, dim=-1)
+        return self.decoder(x)
 
 class PositionalEncoding(nn.Module):
     """Versione semplificata per singolo elemento di sequenza"""

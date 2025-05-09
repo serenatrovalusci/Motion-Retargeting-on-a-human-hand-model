@@ -166,12 +166,12 @@ if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     # angoli fixati per una performance migliore
-    fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
+    fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 35, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     X, Y_scaled, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
 
     # Save scaler
-    joblib.dump(scaler_y, "scaler_y.save")
+    joblib.dump(scaler_y, "scaler.save")
 
     if args.pca_variance < 1.0:
         # use PCA
@@ -192,7 +192,9 @@ if __name__ == "__main__":
     if args.model == 'FCNN':
         model = HandPoseFCNN(input_dim=4, output_dim=output_dim)
     elif args.model == 'Transformer':
-        model = HandPoseTransformer(input_dim=4, output_dim=output_dim) #fix_indices
+        model = HandPoseTransformer(input_dim=4, output_dim=output_dim, fix_indices=fix_Indices)
+    
+    print(f"\nThis is the model: \n\n{model}")
     
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
