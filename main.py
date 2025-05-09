@@ -12,8 +12,8 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Server for Hand Pose Estimation")
-    parser.add_argument('--model', type=str, help='Apply PCA to the target dataset')
-    parser.add_argument('--pca_components', type=int, default=0, help='Number of PCA components to keep')
+    parser.add_argument('--model', type=str, help='Choose the model')
+    parser.add_argument('--pca_components', type=int, default=0, help='If want to use PCA, define the number of components')
     parser.add_argument('--weights_path', type=str, help='Path to weights file')
     parser.add_argument('--scaler_path', type=str, help='Path to scaler file')
     parser.add_argument('--pca_path', type=str, help='Path to PCA file')
@@ -58,6 +58,9 @@ if __name__ == "__main__":
     conn, addr = server.accept()
     print(f"Connected to {addr}")
 
+    # angoli fixati per una performance migliore
+    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
+
     try:
         while True:
             data = conn.recv(1024)
@@ -79,45 +82,28 @@ if __name__ == "__main__":
 
             output = scaler_y.inverse_transform(output).flatten()
 
-            # Decode thumb (0–8 and 9–17)
-            thumb_sin = output[0:9]
-            thumb_cos = output[9:18]
-            thumb_deg = np.rad2deg(np.arctan2(thumb_sin, thumb_cos))
+            r, c = output.shape
+            original_c = c - len(fix_indices)
+            original_output = np.zeros((r, original_c))
+            mixed_col = 0
+            original_col = 0
 
-            # Decode PIP/DIP (indices [13,14,16,17,25,26]) from sin/cos pairs 18–29
-            pip_y = np.rad2deg(np.arctan2(output[18], output[24]))  # index 13
-            pip_z = np.rad2deg(np.arctan2(output[19], output[25]))  # index 14
-            dip_y = np.rad2deg(np.arctan2(output[20], output[26]))  # index 16
-            dip_z = np.rad2deg(np.arctan2(output[21], output[27]))  # index 17
-            mid_y = np.rad2deg(np.arctan2(output[22], output[28]))  # index 25
-            mid_z = np.rad2deg(np.arctan2(output[23], output[29]))  # index 26
-
-            # Remaining 12 raw angles (starts at index 30)
-            raw = output[30:]
-
-            # Build 27-angle output in correct index order
-            final_output = []
-            raw_i = 0
-            for i in range(27):
-                if i < 9:
-                    final_output.append(thumb_deg[i])
-                elif i == 13:
-                    final_output.append(pip_y)
-                elif i == 14:
-                    final_output.append(pip_z)
-                elif i == 16:
-                    final_output.append(dip_y)
-                elif i == 17:
-                    final_output.append(dip_z)
-                elif i == 25:
-                    final_output.append(mid_y)
-                elif i == 26:
-                    final_output.append(mid_z)
+            for i in range(45):
+                if i in fix_indices:
+                    # Estrai sin e cos, poi calcola l'angolo con arctan2
+                    sin_vals = output[:, mixed_col]
+                    cos_vals = output[:, mixed_col + 1]
+                    angles_rad = np.arctan2(sin_vals, cos_vals) 
+                    original_output[:, original_col] = np.rad2deg(angles_rad) # Converti in gradi
+                    mixed_col += 2
+                    original_col += 1
                 else:
-                    final_output.append(raw[raw_i])
-                    raw_i += 1
+                    # Copia direttamente il valore raw
+                    original_output[:, original_col] = output[:, mixed_col]
+                    mixed_col += 1
+                    original_col += 1
 
-            conn.sendall(np.array(final_output, dtype=np.float32).tobytes())
+            conn.sendall(np.array(original_output, dtype=np.float32).tobytes())
 
     except Exception as e:
         print("Error:", e)
