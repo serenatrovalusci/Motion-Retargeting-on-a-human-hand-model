@@ -12,7 +12,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Server for Hand Pose Estimation")
-    parser.add_argument('--model', action='store_true', help='Apply PCA to the target dataset')
+    parser.add_argument('--model', type=str, help='Apply PCA to the target dataset')
     parser.add_argument('--pca_components', type=int, default=0, help='Number of PCA components to keep')
     parser.add_argument('--weights_path', type=str, help='Path to weights file')
     parser.add_argument('--scaler_path', type=str, help='Path to scaler file')
@@ -22,17 +22,19 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-
-    print("Choose what to do: ")
-    print("1) --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path --pca_path pca_path")
+    
+    print("\nHelping prompt : ")
+    print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path --pca_path pca_path\n")
 
     if args.pca_components == 0:
+        print(f"Model selected: {args.model}, without PCA\n")
         if args.model == 'FCNN':
             model = HandPoseFCNN(input_dim=4, output_dim=42)
         elif args.model == 'Transformer':
             model = HandPoseTransformer(input_dim=4, output_dim=42)
 
     else:
+        print(f"Model selected: {args.model}, with PCA\n")
         if args.model == 'FCNN':
             model = HandPoseFCNN(input_dim=4, output_dim=args.pca_components)
         elif args.model == 'Transformer':
@@ -72,7 +74,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 output = model(input_tensor).numpy()
 
-            if args.use_pca:
+            if args.pca_components != 0:
                 output = pca.inverse_transform(output)
 
             output = scaler_y.inverse_transform(output).flatten()
