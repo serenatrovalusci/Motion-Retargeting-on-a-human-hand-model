@@ -25,20 +25,16 @@ if __name__ == "__main__":
     
     print("\nHelping prompt : ")
     print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path --pca_path pca_path\n")
+    
+    # angoli fixati per una performance migliore
+    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
-    if args.pca_components == 0:
-        print(f"Model selected: {args.model}, without PCA\n")
-        if args.model == 'FCNN':
-            model = HandPoseFCNN(input_dim=4, output_dim=42)
-        elif args.model == 'Transformer':
-            model = HandPoseTransformer(input_dim=4, output_dim=42)
+    print(f"Model selected: {args.model}\n")
+    if args.model == 'FCNN':
+        model = HandPoseFCNN(input_dim=4, output_dim=45+len(fix_indices))
+    elif args.model == 'Transformer':
+        model = HandPoseTransformer(input_dim=4, output_dim=45+len(fix_indices))
 
-    else:
-        print(f"Model selected: {args.model}, with PCA\n")
-        if args.model == 'FCNN':
-            model = HandPoseFCNN(input_dim=4, output_dim=args.pca_components)
-        elif args.model == 'Transformer':
-            model = HandPoseTransformer(input_dim=4, output_dim=args.pca_components)
 
     model.load_state_dict(torch.load(args.weights_path))
     model.eval()
@@ -58,8 +54,6 @@ if __name__ == "__main__":
     conn, addr = server.accept()
     print(f"Connected to {addr}")
 
-    # angoli fixati per una performance migliore
-    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     try:
         while True:
@@ -82,24 +76,23 @@ if __name__ == "__main__":
 
             output = scaler_y.inverse_transform(output).flatten()
 
-            r, c = output.shape
-            original_c = c - len(fix_indices)
-            original_output = np.zeros((r, original_c))
+            
+            original_output = np.zeros(45)
             mixed_col = 0
             original_col = 0
 
             for i in range(45):
                 if i in fix_indices:
                     # Estrai sin e cos, poi calcola l'angolo con arctan2
-                    sin_vals = output[:, mixed_col]
-                    cos_vals = output[:, mixed_col + 1]
+                    sin_vals = output[mixed_col]
+                    cos_vals = output[mixed_col + 1]
                     angles_rad = np.arctan2(sin_vals, cos_vals) 
-                    original_output[:, original_col] = np.rad2deg(angles_rad) # Converti in gradi
+                    original_output[original_col] = np.rad2deg(angles_rad) # Converti in gradi
                     mixed_col += 2
                     original_col += 1
                 else:
                     # Copia direttamente il valore raw
-                    original_output[:, original_col] = output[:, mixed_col]
+                    original_output[original_col] = output[mixed_col]
                     mixed_col += 1
                     original_col += 1
 
