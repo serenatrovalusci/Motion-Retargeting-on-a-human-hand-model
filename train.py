@@ -166,7 +166,7 @@ if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     # angoli fixati per una performance migliore
-    fix_Indices = [] # all the thumb angles(9) + 4 index angles + 2 middle angles
+    fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     X, Y_scaled, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
 
