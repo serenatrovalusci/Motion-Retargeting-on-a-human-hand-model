@@ -27,7 +27,7 @@ if __name__ == "__main__":
     print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path --pca_path pca_path\n")
     
     # angoli fixati per una performance migliore
-    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
+    fix_indices = [] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     print(f"Model selected: {args.model}\n")
     if args.model == 'FCNN':
