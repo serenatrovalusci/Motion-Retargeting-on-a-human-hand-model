@@ -45,6 +45,8 @@ def load_data(csv_path, closure_columns, fix_indices):
     scaler = StandardScaler().fit(Y_sincos)
     Y_scaled = scaler.transform(Y_sincos)
 
+    print("All components:", Y_scaled.shape[1])
+
     return X, Y_scaled, scaler
 
 
@@ -109,7 +111,10 @@ def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_in
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
-        loss = loss_fn(preds, yb, fix_indices)
+        if args.pca_variance < 1.0:
+            loss = loss_fn(preds, yb)
+        else:
+            loss = loss_fn(preds, yb, fix_indices)
 
         if training:
             optimizer.zero_grad()
@@ -171,12 +176,12 @@ if __name__ == "__main__":
     X, Y_scaled, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
 
     # Save scaler
-    joblib.dump(scaler_y, "scaler_nofixes.save")
+    joblib.dump(scaler_y, "scaler_45.save")
 
     if args.pca_variance < 1.0:
         # use PCA
         pca = fit_pca(Y_scaled, pca_var=args.pca_variance)
-        joblib.dump(pca, "reconstruction_pca.save")
+        joblib.dump(pca, "reconstruction_pca_45.save")
         loss_type = mse_loss
         save_path = args.save_model if args.save_model else args.model+"_PCA.pth"
     else:
