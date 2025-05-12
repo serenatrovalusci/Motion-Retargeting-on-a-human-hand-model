@@ -70,9 +70,8 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 output = model(input_tensor).numpy()
-
-            if args.pca_components != 0:
-                output = pca.inverse_transform(output)
+                print("output dim",output.shape[1])
+        
 
             output = scaler_y.inverse_transform(output).flatten()
 

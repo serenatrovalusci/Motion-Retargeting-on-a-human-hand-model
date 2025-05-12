@@ -77,16 +77,16 @@ def prepare_dataloaders(X, Y, batch_size=64):
     return train_loader, test_loader
 
 
-def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epochs=300, save_path="FCNN_PCA.pth", fix_indices=[]):
+def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epochs=300, save_path="FCNN_PCA.pth", fix_indices=[], pca=None):
     train_losses, test_losses = [], []
     best_loss, best_model_state = float('inf'), None
 
     for epoch in range(epochs):
         model.train()
-        train_loss = sum_step_loss(model, train_loader, loss_fn, optimizer, training=True, fix_indices=fix_indices)
+        train_loss = sum_step_loss(model, train_loader, loss_fn, optimizer, training=True, fix_indices=fix_indices, pca=pca)
 
         model.eval()
-        test_loss = sum_step_loss(model, test_loader, loss_fn, training=False, fix_indices=fix_indices  )
+        test_loss = sum_step_loss(model, test_loader, loss_fn, training=False, fix_indices=fix_indices, pca=pca)
 
         scheduler.step(test_loss)
         train_losses.append(train_loss)
@@ -107,12 +107,13 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epoch
     return train_losses, test_losses
 
 
-def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_indices=None):
+def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_indices=None, pca=None):
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
-        if args.pca_variance < 1.0:
-            loss = loss_fn(preds, yb)
+
+        if pca is not None:
+            loss = loss_fn(preds, yb, pca)
         else:
             loss = loss_fn(preds, yb, fix_indices)
 
@@ -125,8 +126,10 @@ def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_in
     return total_loss / len(loader.dataset)
 
 
-def mse_loss(preds, targets):
-    return torch.nn.functional.mse_loss(preds, targets)
+def mse_loss_with_pca(preds, targets, pca):
+    preds_pca = transform_to_pca(preds, pca)
+    targets_pca = transform_to_pca(targets, pca)
+    return torch.nn.functional.mse_loss(preds_pca, targets_pca)
 
 
 def weighted_mse_loss(preds, targets, fix_indices):
@@ -174,15 +177,14 @@ if __name__ == "__main__":
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
-    Y_pca = Y
     # Save scaler
     joblib.dump(scaler_y, "scaler_45.save")
 
     if args.pca_variance < 1.0:
         # use PCA
-        pca = fit_pca(Y_pca, pca_var=args.pca_variance)
+        pca = fit_pca(Y, pca_var=args.pca_variance)
         joblib.dump(pca, "reconstruction_pca_45.save")
-        loss_type = mse_loss
+        loss_type = mse_loss_with_pca
         save_path = args.save_model if args.save_model else args.model+"_PCA.pth"
     else:
         # do not use PCA
@@ -204,31 +206,30 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
+  
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
         loss_fn=loss_type,
         epochs=args.epochs,
         save_path=save_path,
-        fix_indices=fix_Indices
+        fix_indices=fix_Indices,
+        pca=pca 
     )
 
     if args.plot_mse:
-
-        os.makedirs("plots", exist_ok=True)
-        plt.figure(figsize=(10, 5))
-        plt.plot(train_losses, label='Train Loss')
-        plt.plot(test_losses, label='Test Loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.title('MSE Loss Curve (PCA in loss)' if args.use_pca else 'Weighted MSE Loss Curve')
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig("plots/mse_loss_curve.png")
-        plt.close()
-        
-
+            os.makedirs("plots", exist_ok=True)
+            plt.figure(figsize=(10, 5))
+            plt.plot(train_losses, label='Train Loss')
+            plt.plot(test_losses, label='Test Loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.title('MSE Loss Curve (PCA in loss)' if args.pca_variance < 1.0 else 'Weighted MSE Loss Curve')  # FIXED
+            plt.legend()
+            plt.grid(True)
+            plt.tight_layout()
+            plt.savefig("plots/mse_loss_curve.png")
+            plt.close()
 
     print("Training complete. Model saved to:", save_path)
     print(f"Best test loss: {min(test_losses):.6f}")
