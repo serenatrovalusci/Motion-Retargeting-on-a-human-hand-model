@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 output = model(input_tensor).numpy()
-                print("output dim",output.shape[1])
+        
         
 
             output = scaler_y.inverse_transform(output).flatten()
