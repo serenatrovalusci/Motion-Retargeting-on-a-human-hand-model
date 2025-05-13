@@ -178,7 +178,7 @@ if __name__ == "__main__":
 
     X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
     # Save scaler
-    joblib.dump(scaler_y, "scaler_45.save")
+    joblib.dump(scaler_y, "scaler.save")
 
     if args.pca_variance < 1.0:
         # use PCA
