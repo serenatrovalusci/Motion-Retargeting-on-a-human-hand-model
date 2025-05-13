@@ -9,7 +9,6 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Server for Hand Pose Estimation")
     parser.add_argument('--model', type=str, help='Choose the model')
-    parser.add_argument('--pca_components', type=int, default=0, help='If want to use PCA, define the number of components')
     parser.add_argument('--weights_path', type=str, help='Path to weights file')
     parser.add_argument('--scaler_path', type=str, help='Path to scaler file')
   
@@ -19,7 +18,7 @@ if __name__ == "__main__":
     args = parse_args()
     
     print("\nHelping prompt : ")
-    print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path\n")
+    print("python main.py --model Transformer --weights_path weights_path --scaler_path scaler_path\n")
     
     # angoli fixati per una performance migliore
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
