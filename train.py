@@ -54,7 +54,7 @@ def fit_pca(Y, pca_var=0.995):
     pca = PCA(n_components=pca_var).fit(Y)
     Y_pca = pca.transform(Y)
     print(f"Numbers of PCA components related to a variance of {pca_var}: {Y_pca.shape[1]}\n")
-    return pca
+    return pca, Y_pca.shape[1]
 
 def transform_to_pca(y_tensor, pca):
     # Convert numpy components to PyTorch tensors once
@@ -182,9 +182,9 @@ if __name__ == "__main__":
 
     if args.pca_variance < 1.0:
         # use PCA
-        pca = fit_pca(Y, pca_var=args.pca_variance)
+        pca, N = fit_pca(Y, pca_var=args.pca_variance)
         loss_type = mse_loss_with_pca
-        save_path = args.save_model if args.save_model else args.model+"_PCA.pth"
+        save_path = args.save_model if args.save_model else args.model+"_"+N+"_PCA.pth"
     else:
         # do not use PCA
         pca = None
