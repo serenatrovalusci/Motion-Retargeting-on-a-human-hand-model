@@ -31,8 +31,8 @@ class HandPoseFCNN(nn.Module):
     
     
 class HandPoseTransformer(nn.Module):
-    def __init__(self, input_dim=4, output_dim=27, fix_indices=[], d_model=128, num_heads=8, 
-                 num_layers=4, dim_feedforward=512, dropout=0.1):
+    def __init__(self, input_dim=4, fix_indices=[], d_model=128, num_heads=4, 
+                 num_layers=3, dim_feedforward=512, dropout=0.1):
         super().__init__()
         
         self.d_model = d_model

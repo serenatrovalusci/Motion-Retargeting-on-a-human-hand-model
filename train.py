@@ -183,7 +183,6 @@ if __name__ == "__main__":
     if args.pca_variance < 1.0:
         # use PCA
         pca = fit_pca(Y, pca_var=args.pca_variance)
-        joblib.dump(pca, "reconstruction_pca_45.save")
         loss_type = mse_loss_with_pca
         save_path = args.save_model if args.save_model else args.model+"_PCA.pth"
     else:
@@ -199,7 +198,7 @@ if __name__ == "__main__":
     if args.model == 'FCNN':
         model = HandPoseFCNN(input_dim=4, output_dim=output_dim)
     elif args.model == 'Transformer':
-        model = HandPoseTransformer(input_dim=4, output_dim=output_dim, fix_indices=fix_Indices)
+        model = HandPoseTransformer(input_dim=4, fix_indices=fix_Indices)
     
     print(f"\nThis is the model: \n\n{model}")
     

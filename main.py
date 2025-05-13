@@ -1,7 +1,3 @@
-# FINAL run_server_fixed.py for output_dim=42
-# Thumb = 0–8 (sin) + 9–17 (cos)
-# PIP/DIP = sin/cos decoded at correct indices: 13,14,16,17,25,26
-
 import torch
 import numpy as np
 import joblib
@@ -16,7 +12,6 @@ def parse_args():
     parser.add_argument('--pca_components', type=int, default=0, help='If want to use PCA, define the number of components')
     parser.add_argument('--weights_path', type=str, help='Path to weights file')
     parser.add_argument('--scaler_path', type=str, help='Path to scaler file')
-    parser.add_argument('--pca_path', type=str, help='Path to PCA file')
   
     return parser.parse_args()
 
@@ -24,25 +19,22 @@ if __name__ == "__main__":
     args = parse_args()
     
     print("\nHelping prompt : ")
-    print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path --pca_path pca_path\n")
+    print("python main.py --model Transformer --pca_components 32 --weights_path weights_path --scaler_path scaler_path\n")
     
     # angoli fixati per una performance migliore
-    fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
+    fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     print(f"Model selected: {args.model}\n")
     if args.model == 'FCNN':
-        model = HandPoseFCNN(input_dim=4, output_dim=45+len(fix_indices))
+        model = HandPoseFCNN(input_dim=4, output_dim=45+len(fix_Indices))
     elif args.model == 'Transformer':
-        model = HandPoseTransformer(input_dim=4, output_dim=45+len(fix_indices))
+        model = HandPoseTransformer(input_dim=4, fix_indices=fix_Indices)
 
 
     model.load_state_dict(torch.load(args.weights_path))
     model.eval()
     
     scaler_y = joblib.load(args.scaler_path)
-
-    if args.pca_components != 0:
-        pca = joblib.load(args.pca_path)
 
     HOST = '127.0.0.1'
     PORT = 65432
@@ -70,7 +62,7 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 output = model(input_tensor).numpy()
-        
+                print("output dim",output.shape[1])
         
 
             output = scaler_y.inverse_transform(output).flatten()
@@ -81,7 +73,7 @@ if __name__ == "__main__":
             original_col = 0
 
             for i in range(45):
-                if i in fix_indices:
+                if i in fix_Indices:
                     # Estrai sin e cos, poi calcola l'angolo con arctan2
                     sin_vals = output[mixed_col]
                     cos_vals = output[mixed_col + 1]
