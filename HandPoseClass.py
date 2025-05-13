@@ -31,8 +31,8 @@ class HandPoseFCNN(nn.Module):
     
     
 class HandPoseTransformer(nn.Module):
-    def __init__(self, input_dim=4, fix_indices=[], d_model=128, num_heads=8, 
-                 num_layers=4, dim_feedforward=512, dropout=0.1):
+    def __init__(self, input_dim=4, fix_indices=[], d_model=128, num_heads=4, 
+                 num_layers=3, dim_feedforward=512, dropout=0.1):
         super().__init__()
         
         self.d_model = d_model
@@ -153,3 +153,54 @@ class PositionalEncoding(nn.Module):
     def forward(self, x):
         x = x + self.pe[:x.size(1)]
         return self.dropout(x)
+    
+class HandPoseVAE(nn.Module):
+    def __init__(self, input_dim=62, latent_dim=30, hidden_dims=[512, 256]):
+        super(HandPoseVAE, self).__init__()
+        
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        
+        # Encoder
+        encoder_layers = []
+        prev_dim = input_dim
+        for hidden_dim in hidden_dims:
+            encoder_layers.append(nn.Linear(prev_dim, hidden_dim))
+            encoder_layers.append(nn.BatchNorm1d(hidden_dim))
+            encoder_layers.append(nn.LeakyReLU(0.2))
+            prev_dim = hidden_dim
+        
+        self.encoder = nn.Sequential(*encoder_layers)
+        
+        # Latent space mean and variance
+        self.fc_mu = nn.Linear(hidden_dims[-1], latent_dim)
+        self.fc_var = nn.Linear(hidden_dims[-1], latent_dim)
+        
+        # Decoder
+        decoder_layers = []
+        prev_dim = latent_dim
+        for hidden_dim in reversed(hidden_dims):
+            decoder_layers.append(nn.Linear(prev_dim, hidden_dim))
+            decoder_layers.append(nn.BatchNorm1d(hidden_dim))
+            decoder_layers.append(nn.LeakyReLU(0.2))
+            prev_dim = hidden_dim
+        
+        decoder_layers.append(nn.Linear(hidden_dims[0], input_dim))
+        self.decoder = nn.Sequential(*decoder_layers)
+        
+    def encode(self, x):
+        h = self.encoder(x)
+        return self.fc_mu(h), self.fc_var(h)
+        
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+        
+    def decode(self, z):
+        return self.decoder(z)
+        
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        return self.decode(z), mu, logvar
