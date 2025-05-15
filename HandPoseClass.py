@@ -154,7 +154,7 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(1)]
         return self.dropout(x)
     
-class HandPoseVAE(nn.Module):
+class HandPoseVAE(nn.Module):         #Variational Autoencoder
     def __init__(self, input_dim=62, latent_dim=30, hidden_dims=[512, 256]):
         super(HandPoseVAE, self).__init__()
         
@@ -204,3 +204,41 @@ class HandPoseVAE(nn.Module):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
+    
+
+class HandPoseAE(nn.Module):          #Autoencoder
+    def __init__(self, input_dim=62, latent_dim=30, hidden_dims=[512, 256]):
+        super(HandPoseAE, self).__init__()
+
+        # Encoder
+        encoder_layers = []
+        prev_dim = input_dim
+        for h_dim in hidden_dims:
+            encoder_layers.append(nn.Linear(prev_dim, h_dim))
+            encoder_layers.append(nn.ReLU())
+            prev_dim = h_dim
+        self.encoder = nn.Sequential(*encoder_layers)
+        self.to_latent = nn.Linear(prev_dim, latent_dim)
+
+        # Decoder
+        decoder_layers = []
+        prev_dim = latent_dim
+        for h_dim in reversed(hidden_dims):
+            decoder_layers.append(nn.Linear(prev_dim, h_dim))
+            decoder_layers.append(nn.ReLU())
+            prev_dim = h_dim
+        decoder_layers.append(nn.Linear(prev_dim, input_dim))
+        self.decoder = nn.Sequential(*decoder_layers)
+
+    def encode(self, x):
+        h = self.encoder(x)
+        z = self.to_latent(h)
+        return z
+
+    def decode(self, z):
+        return self.decoder(z)
+
+    def forward(self, x):
+        z = self.encode(x)
+        x_recon = self.decode(z)
+        return x_recon, z
