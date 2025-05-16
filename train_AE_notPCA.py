@@ -158,7 +158,7 @@ if __name__ == "__main__":
     X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
     joblib.dump(scaler_y, "scaler.save")
 
-    ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=45)
+    ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=20)
     ae_model.load_state_dict(torch.load("HandPoseAE.pth"))
 
     ae_model.eval()
