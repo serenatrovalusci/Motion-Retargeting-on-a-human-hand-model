@@ -85,7 +85,7 @@ train_loader, test_loader = train_test_split(Y, test_size=0.2, random_state=42)
 train_loader = DataLoader(TensorDataset(torch.FloatTensor(train_loader)), batch_size=64, shuffle=True)
 test_loader = DataLoader(TensorDataset(torch.FloatTensor(test_loader)), batch_size=64)
 
-model = HandPoseAE(input_dim=input_dim, latent_dim=20)
+model = HandPoseAE(input_dim=input_dim, latent_dim=45)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 loss_fn = nn.MSELoss()
