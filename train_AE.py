@@ -1,7 +1,7 @@
 from HandPoseClass import *
 from train import *
 
-def load_data_AE(csv_path, closure_columns, z_thresh= 2.5):
+def load_data(csv_path, closure_columns, fix_indices, z_thresh=2.5):
     print("Loading Dataset from csv file...")
     data = pd.read_csv(csv_path)
     data.columns = data.columns.str.strip()
@@ -13,32 +13,14 @@ def load_data_AE(csv_path, closure_columns, z_thresh= 2.5):
     print("Dataset size:", len(TensorDataset(torch.FloatTensor(Y))))
 
     _, Y = remove_outliers_zscore(X, Y, z_thresh)
+    Y_sincos = generate_sincos_dataset(Y, fix_indices)
 
-    scaler = StandardScaler().fit(Y)
-    Y_scaled = scaler.transform(Y)
+    scaler = StandardScaler().fit(Y_sincos)
+    Y_scaled = scaler.transform(Y_sincos)
 
     print("All components:", Y_scaled.shape[1])
 
     return Y_scaled, scaler
-
-
-closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-Y,scaler = load_data_AE("hand_dataset_all_fingers.csv", closure_columns)
-
-joblib.dump(scaler, "scaler_AE.save")
-
-input_dim = Y.shape[1]
-model = HandPoseAE(input_dim=input_dim, latent_dim=20)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
-loss_fn = nn.MSELoss()
-
-dataset = TensorDataset(torch.FloatTensor(Y))  
-
-print(f"Dataset size after outlier removal: {len(dataset)}")
-
-dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
-
-epochs = 300
 
 def sum_step_loss_AE(model, loader, loss_fn, optimizer=None, training=False):
     total_loss = 0.0
@@ -85,11 +67,25 @@ def train_autoencoder(model, train_loader, test_loader, optimizer, scheduler, lo
     return train_losses, test_losses
 
 
+closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
+fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
+Y,scaler = load_data("hand_dataset_all_fingers.csv", closure_columns, fix_indices)
+
+joblib.dump(scaler, "scaler_AE.save")
+
+input_dim = Y.shape[1]
+
+dataset = TensorDataset(torch.FloatTensor(Y))  
+
+print(f"Dataset size after outlier removal: {len(dataset)}")
+
+dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
 train_loader, test_loader = train_test_split(Y, test_size=0.2, random_state=42)
 train_loader = DataLoader(TensorDataset(torch.FloatTensor(train_loader)), batch_size=64, shuffle=True)
 test_loader = DataLoader(TensorDataset(torch.FloatTensor(test_loader)), batch_size=64)
 
-model = HandPoseAE(input_dim=45, latent_dim=20)
+model = HandPoseAE(input_dim=input_dim, latent_dim=20)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 loss_fn = nn.MSELoss()
