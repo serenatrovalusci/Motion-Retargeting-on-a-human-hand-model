@@ -136,7 +136,7 @@ def weighted_mse_loss(preds, targets, fix_indices):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with or without PCA.")
-    parser.add_argument('--model', type=str, default='FCNN', help='Choose the model: FCNN/Transformer')
+    parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
