@@ -31,7 +31,7 @@ class HandPoseFCNN(nn.Module):
     
     
 class HandPoseTransformer(nn.Module):
-    def __init__(self, input_dim=4, fix_indices=[], d_model=128, num_heads=4, 
+    def __init__(self, input_dim=4, fix_indices=[], pca_dim=0, d_model=128, num_heads=4, 
                  num_layers=3, dim_feedforward=512, dropout=0.1):
         super().__init__()
         
@@ -98,6 +98,11 @@ class HandPoseTransformer(nn.Module):
             'pinky': FingerHead(d_model, pin)    
         })
 
+        # Last layer added if Want to predict Synergies
+        self.pca_dim = pca_dim
+        if pca_dim != 0:
+            self.last = nn.Linear(thu+ind+mid+rin+pin, pca_dim)
+
 
     def forward(self, x):
         # x shape: [batch_size, 4]
@@ -122,6 +127,10 @@ class HandPoseTransformer(nn.Module):
         
         # 5. Combina gli output 
         output = torch.cat([thumb, index, middle, ring, pinky], dim=-1)  # [batch_size, 45+fixed]
+
+        # 6. If Synergy Forecasting
+        if self.pca_dim != 0:
+            output = self.last(output)
         
         return output
 
