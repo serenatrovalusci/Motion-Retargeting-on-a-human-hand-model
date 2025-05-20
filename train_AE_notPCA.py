@@ -98,7 +98,22 @@ def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_in
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
-        loss = loss_fn(preds, yb)
+
+        # Move constraints to correct device
+        device = preds.device
+        min_dev = min_vals.to(device)
+        max_dev = max_vals.to(device)
+
+        # 1. Original AE-encoded loss
+        loss_main = loss_fn(preds, yb)
+
+        # 2. Constraint loss
+        loss_constraint = joint_constraint_loss(preds, min_dev, max_dev)
+
+        # 3. Combine
+        alpha = 1.0
+        beta = 0.01  # You can tune this
+        loss = alpha * loss_main + beta * loss_constraint
 
         if training:
             optimizer.zero_grad()
@@ -113,6 +128,12 @@ def mse_loss_with_encoder(preds, targets, encoder_model):
     preds_encoded = encode_with_autoencoder(preds, encoder_model)
     targets_encoded = encode_with_autoencoder(targets, encoder_model)
     return torch.nn.functional.mse_loss(preds_encoded, targets_encoded)
+
+
+def joint_constraint_loss(preds, min_tensor, max_tensor):
+    lower_violation = torch.relu(min_tensor - preds)
+    upper_violation = torch.relu(preds - max_tensor)
+    return torch.mean(lower_violation**2 + upper_violation**2)
 
 
 def weighted_mse_loss(preds, targets, fix_indices):
@@ -157,10 +178,10 @@ if __name__ == "__main__":
 
     X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
 
-    joblib.dump(scaler_y, "scaler_VAE.save")
+    joblib.dump(scaler_y, "scaler_AE.save")
 
     ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=20)
-    ae_model.load_state_dict(torch.load("HandPoseVVAE.pth"))
+    ae_model.load_state_dict(torch.load("HandPoseAE.pth"))
 
     ae_model.eval()
     loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, ae_model)
@@ -178,6 +199,10 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
+
+    min_vals = torch.tensor(np.load("min_vals.npy"), dtype=torch.float32)
+    max_vals = torch.tensor(np.load("max_vals.npy"), dtype=torch.float32)
+
 
     train_losses, test_losses = train(
         model, train_loader, test_loader,

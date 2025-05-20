@@ -27,7 +27,7 @@ def sum_step_loss_AE(model, loader, loss_fn, optimizer=None, training=False):
     for batch in loader:
         x = batch[0]
         x_hat, _ = model(x)
-        loss = loss_fn(x_hat, x)
+        loss = loss_fn(x_hat, x) 
 
         if training:
             optimizer.zero_grad()
