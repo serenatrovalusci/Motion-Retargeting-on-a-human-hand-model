@@ -180,8 +180,8 @@ if __name__ == "__main__":
 
     joblib.dump(scaler_y, "scaler_AE.save")
 
-    ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=20)
-    ae_model.load_state_dict(torch.load("HandPoseAE.pth"))
+    ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=30)
+    ae_model.load_state_dict(torch.load("HandPoseAE_2.pth"))
 
     ae_model.eval()
     loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, ae_model)

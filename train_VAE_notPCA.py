@@ -108,13 +108,10 @@ def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_in
         total_loss += loss.item() * xb.size(0)
     return total_loss / len(loader.dataset)
 
-
 def mse_loss_with_encoder(preds, targets, encoder_model):
     preds_encoded, _ = encoder_model.encode(preds)
     targets_encoded, _ = encoder_model.encode(targets)
     return torch.nn.functional.mse_loss(preds_encoded, targets_encoded)
-
-
 
 def weighted_mse_loss(preds, targets, fix_indices):
     weights = torch.ones_like(preds)
