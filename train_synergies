@@ -13,6 +13,21 @@ from scipy.stats import zscore
 from sklearn.decomposition import PCA
 import argparse
 import os
+from datetime import datetime
+
+def create_training_directory(base_dir="training_results"):
+    # Create a unique directory name with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    training_dir = os.path.join(base_dir, f"training_{timestamp}")
+    os.makedirs(training_dir, exist_ok=True)
+    return training_dir
+
+def save_training_info(training_dir, info_dict):
+    # Save training info to a text file
+    info_file = os.path.join(training_dir, "training_info.txt")
+    with open(info_file, 'w') as f:
+        for key, value in info_dict.items():
+            f.write(f"{key}: {value}\n")
 
 
 def generate_sincos_dataset(Y, fix_indices):
@@ -136,8 +151,8 @@ def weighted_mse_loss(preds, targets, fix_indices):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with or without PCA.")
-    parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
-    parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
+    parser.add_argument('--model', type=str, default="Transformer",help='Choose the model: FCNN/Transformer')
+    parser.add_argument('--pca_variance', type=float, default=0.999999995, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
@@ -161,29 +176,53 @@ if __name__ == "__main__":
     print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
     print("---------------------------------------------\n")
 
+    # Create training directory
+    training_dir = create_training_directory()
+    print(f"All training results will be saved in: {training_dir}")
+
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     # angoli fixati per una performance migliore
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
 
     X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
-    # Save scaler
-    joblib.dump(scaler_y, "scaler.save")
+
+    # Prepare training info dictionary
+    training_info = {
+        "Model": args.model,
+        "PCA Variance": args.pca_variance if args.pca_variance < 1.0 else "No PCA",
+        "Z-score Threshold": args.z_thresh,
+        "Epochs": args.epochs,
+        "Batch Size": args.batch_size,
+        "Fixed Indices": fix_Indices,
+        "Number of Fixed Indices": len(fix_Indices),
+        "Input Dimension": 4,
+        "Output Dimension": Y.shape[1],
+        "Dataset": 'hand_dataset_all_fingers.csv',
+        "Closure Columns": closure_columns,
+        "Training Start Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
     if args.pca_variance < 1.0:
-        # use PCA
         print("You have selected PCA\n")
         pca, N, Y = generate_pca_dataset(Y, pca_var=args.pca_variance)
         loss_type = mse_loss
-        save_path = args.save_model if args.save_model else args.model+"_"+N+"_PCA.pth"
+        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{N}_PCA.pth")
+        training_info["PCA Components"] = N
+        training_info["Explained Variance"] = args.pca_variance
     else:
-        # do not use PCA
         print("You have selected NO PCA\n")
         pca = None
         loss_type = weighted_mse_loss
-        save_path = args.save_model if args.save_model else args.model+".pth"
+        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}.pth")
+        training_info["PCA Components"] = "N/A"
 
     output_dim = Y.shape[1]
+    training_info["Final Output Dimension"] = output_dim
+
+    # Save scaler in the training directory
+    scaler_path = os.path.join(training_dir, "scaler.save")
+    joblib.dump(scaler_y, scaler_path)
+    training_info["Scaler Path"] = scaler_path
 
     train_loader, test_loader = prepare_dataloaders(X, Y, batch_size=args.batch_size)
 
@@ -193,34 +232,49 @@ if __name__ == "__main__":
         model = HandPoseTransformer(input_dim=4, fix_indices=fix_Indices, pca_dim=output_dim if args.pca_variance < 1.0 else 0)
     
     print(f"This is the model: \n\n{model}\n")
+    training_info["Model Architecture"] = str(model)
     
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
-  
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
         loss_fn=loss_type,
         epochs=args.epochs,
-        save_path=save_path,
+        save_path=model_save_path,
         fix_indices=fix_Indices,
         pca=pca 
     )
 
-    if args.plot_mse:
-            os.makedirs("plots", exist_ok=True)
-            plt.figure(figsize=(10, 5))
-            plt.plot(train_losses, label='Train Loss')
-            plt.plot(test_losses, label='Test Loss')
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
-            plt.title('MSE Loss Curve (PCA in loss)' if args.pca_variance < 1.0 else 'Weighted MSE Loss Curve')  # FIXED
-            plt.legend()
-            plt.grid(True)
-            plt.tight_layout()
-            plt.savefig("plots/mse_loss_curve.png")
-            plt.close()
+    # Update training info with final results
+    training_info["Training Duration"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    training_info["Best Test Loss"] = min(test_losses)
+    training_info["Final Learning Rate"] = optimizer.param_groups[0]['lr']
+    training_info["Model Save Path"] = model_save_path
 
-    print("Training complete. Model saved to:", save_path)
+    # Save training info
+    save_training_info(training_dir, training_info)
+
+    
+    plot_dir = os.path.join(training_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(test_losses, label='Test Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('MSE Loss Curve (PCA in loss)' if args.pca_variance < 1.0 else 'Weighted MSE Loss Curve')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plot_path = os.path.join(plot_dir, "mse_loss_curve.png")
+    plt.savefig(plot_path)
+    plt.close()
+    training_info["Plot Path"] = plot_path
+
+    print("\nTraining complete. All results saved in:", training_dir)
     print(f"Best test loss: {min(test_losses):.6f}")
+    print("\nTraining Summary:")
+    for key, value in training_info.items():
+        print(f"{key}: {value}")
