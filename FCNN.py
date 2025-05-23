@@ -3,7 +3,7 @@
 # - Thumb: joints 0–8 → sin/cos (18 outputs)
 # - Index PIP (13/14), DIP (16/17), Middle DIP (25/26) → sin/cos (6 joints × 2 = 12 outputs)
 # - Remaining 12 joints → raw (12 outputs)
-
+# ciaooooooo
 import torch
 import torch.nn as nn
 import torch.optim as optim
