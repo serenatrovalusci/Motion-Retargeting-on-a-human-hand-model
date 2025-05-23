@@ -46,6 +46,9 @@ if __name__ == "__main__":
     # Configurazione automatica da file
     args = parse_args()
     config = load_config(args.info_path)
+
+    print("\nHelping prompt : ")
+    print("python main_synergies.py --info_path training_results\training_20250521_150116\training_info.txt \n")
     
     # Parametri essenziali (con fallback)
     pca_components = config.get("PCA Components", 0)
