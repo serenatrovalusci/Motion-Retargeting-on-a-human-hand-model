@@ -69,7 +69,7 @@ def train_autoencoder(model, train_loader, test_loader, optimizer, scheduler, lo
 
 closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
 fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
-Y,scaler = load_data("hand_dataset_all_fingers.csv", closure_columns, fix_indices)
+Y,scaler = load_data("dataset/hand_dataset_all_fingers.csv", closure_columns, fix_indices)
 
 joblib.dump(scaler, "scaler_AE.save")
 

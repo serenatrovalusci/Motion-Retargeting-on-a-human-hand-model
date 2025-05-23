@@ -45,6 +45,11 @@ def load_data(csv_path, closure_columns, fix_indices, z_thresh=2.5):
 
     return X, Y_scaled, scaler
 
+def find_min_max(Y):
+
+    min_vals = torch.tensor(np.min(Y, axis=0), dtype=torch.float32)
+    max_vals = torch.tensor(np.max(Y, axis=0), dtype=torch.float32)
+    return min_vals, max_vals
 
 def encode_with_autoencoder(Y_tensor, model_ae):
     return model_ae.encode(Y_tensor)
@@ -64,16 +69,16 @@ def prepare_dataloaders(X, Y, batch_size=64):
     return train_loader, test_loader
 
 
-def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epochs=300, save_path="FCNN_VAE.pth", fix_indices=[]):
+def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, min_vals, max_vals,epochs=300, save_path="FCNN_VAE.pth"): 
     train_losses, test_losses = [], []
     best_loss, best_model_state = float('inf'), None
 
     for epoch in range(epochs):
         model.train()
-        train_loss = sum_step_loss(model, train_loader, loss_fn, optimizer, training=True, fix_indices=fix_indices)
+        train_loss = sum_step_loss(model, train_loader, loss_fn, min_vals, max_vals, optimizer, training=True)
 
         model.eval()
-        test_loss = sum_step_loss(model, test_loader, loss_fn, training=False, fix_indices=fix_indices)
+        test_loss = sum_step_loss(model, test_loader, loss_fn, min_vals, max_vals, optimizer, training=False)
 
         scheduler.step(test_loss)
         train_losses.append(train_loss)
@@ -82,7 +87,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epoch
         if test_loss < best_loss:
             best_loss = test_loss
             best_model_state = model.state_dict()
-            torch.save(best_model_state, save_path)
+            #torch.save(best_model_state, save_path)
 
         if epoch % 20 == 0:
             lr = optimizer.param_groups[0]['lr']
@@ -94,7 +99,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, epoch
     return train_losses, test_losses
 
 
-def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_indices=None):
+def sum_step_loss(model, loader, loss_fn, min_vals, max_vals, optimizer=None, training=False):
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
@@ -111,9 +116,7 @@ def sum_step_loss(model, loader, loss_fn, optimizer=None, training=False, fix_in
         loss_constraint = joint_constraint_loss(preds, min_dev, max_dev)
 
         # 3. Combine
-        alpha = 1.0
-        beta = 0.01  # You can tune this
-        loss = alpha * loss_main + beta * loss_constraint
+        loss = loss_main + loss_constraint
 
         if training:
             optimizer.zero_grad()
@@ -176,9 +179,11 @@ if __name__ == "__main__":
     z_thresh = args.z_thresh
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
 
-    X, Y, scaler_y = load_data('hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
-
-    joblib.dump(scaler_y, "scaler_AE.save")
+    X, Y, scaler_y = load_data('dataset/hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
+    
+    min_vals, max_vals = find_min_max(Y)
+    
+    #joblib.dump(scaler_y, "scaler_AE.save")
 
     ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=30)
     ae_model.load_state_dict(torch.load("HandPoseAE_2.pth"))
@@ -200,17 +205,14 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
-    min_vals = torch.tensor(np.load("min_vals.npy"), dtype=torch.float32)
-    max_vals = torch.tensor(np.load("max_vals.npy"), dtype=torch.float32)
-
-
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
         loss_fn=loss_type,
+        min_vals=min_vals,
+        max_vals=max_vals,
         epochs=args.epochs,
-        save_path=save_path,
-        fix_indices=fix_Indices
+        save_path=save_path
     )
 
     if args.plot_mse:
@@ -224,7 +226,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig("plots/mse_loss_curve.png")
+        #plt.savefig("plots/mse_loss_curve.png")
         plt.close()
 
     print("Training complete. Model saved to:", save_path)
