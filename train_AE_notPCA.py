@@ -153,6 +153,7 @@ def weighted_mse_loss(preds, targets, fix_indices):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with AE encoder-based loss.")
+    parser.add_argument('--model_reduction', type=str, help='Choose the model: AE/VAE')
     parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
@@ -184,14 +185,17 @@ if __name__ == "__main__":
     min_vals, max_vals = find_min_max(Y)
     
     #joblib.dump(scaler_y, "scaler_AE.save")
-
-    ae_model = HandPoseAE(input_dim=Y.shape[1], latent_dim=30)
-    ae_model.load_state_dict(torch.load("HandPoseAE_2.pth"))
-
-    ae_model.eval()
-    loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, ae_model)
-    save_path = args.save_model if args.save_model else args.model + "_AE_Encoded.pth"
-
+    if args.model == 'AE':
+        model_reduction = HandPoseAE(input_dim=Y.shape[1], latent_dim=30)
+        model_reduction.load_state_dict(torch.load("HandPoseAE_2.pth"))   
+    elif args.model == 'VAE':
+        model_reduction = HandPoseVAE(input_dim=Y.shape[1], latent_dim=30)
+        model_reduction.load_state_dict(torch.load("HandPoseVAE_2.pth"))
+    
+    model_reduction.eval()
+    loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, model_reduction)
+    save_path = args.save_model if args.save_model else args.model + f"_{args.model_reduction}.pth"
+    
     output_dim = Y.shape[1]
     train_loader, test_loader = prepare_dataloaders(X, Y, batch_size=args.batch_size)
 
