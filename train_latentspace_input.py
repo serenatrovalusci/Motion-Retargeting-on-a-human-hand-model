@@ -271,6 +271,8 @@ if __name__ == "__main__":
     )
     duration = datetime.now() - start_time
     # Update training info with final results
+    training_info["Min Values"] = min_vals.tolist()
+    training_info["Max Values"] = max_vals.tolist()
     training_info["Training Start Time"] = start_time.strftime('%Y-%m-%d %H:%M:%S')
     training_info["Training Duration"] = str(duration)
     training_info["Best Test Loss"] = min(test_losses)
