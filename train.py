@@ -14,7 +14,7 @@ from sklearn.decomposition import PCA
 import argparse
 import os
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 def create_training_directory(base_dir="training_results/training_losspca_results"):
     # Create a unique directory name with timestamp
