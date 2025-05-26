@@ -12,7 +12,21 @@ from HandPoseClass import *
 from scipy.stats import zscore
 import argparse
 import os
+from datetime import datetime, timedelta
 
+def create_training_directory(base_dir="training_results"):
+    # Create a unique directory name with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    training_dir = os.path.join(base_dir, f"training_{timestamp}")
+    os.makedirs(training_dir, exist_ok=True)
+    return training_dir
+
+def save_training_info(training_dir, info_dict):
+    # Save training info to a text file
+    info_file = os.path.join(training_dir, "training_info.txt")
+    with open(info_file, 'w') as f:
+        for key, value in info_dict.items():
+            f.write(f"{key}: {value}\n")
 
 def generate_sincos_dataset(Y, fix_indices):
     mixed_columns = []
@@ -176,35 +190,61 @@ if __name__ == "__main__":
     print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
     print("---------------------------------------------")
 
+    # Create training directory
+    training_dir = create_training_directory()
+    print(f"All training results will be saved in: {training_dir}")
+
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
-
+    latent_dimension = 30;
     X, Y, scaler_y = load_data('dataset/hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
     
     min_vals, max_vals = find_min_max(Y)
+    training_info = {
+    #"Model": args.model,
+    "Z-score Threshold": args.z_thresh,
+    "Epochs": args.epochs,
+    "Batch Size": args.batch_size,
+    "Fixed Indices": fix_Indices,
+    "Number of Fixed Indices": len(fix_Indices),
+    "Input Dimension": 4,
+    "Output Dimension": Y.shape[1],
+    "Dataset": 'dataset/hand_dataset_all_fingers.csv',
+    "Closure Columns": closure_columns,
+    "Training Start Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     
     #joblib.dump(scaler_y, "scaler_AE.save")
-    if args.model == 'AE':
-        model_reduction = HandPoseAE(input_dim=Y.shape[1], latent_dim=30)
-        model_reduction.load_state_dict(torch.load("HandPoseAE_2.pth"))   
-    elif args.model == 'VAE':
-        model_reduction = HandPoseVAE(input_dim=Y.shape[1], latent_dim=30)
-        model_reduction.load_state_dict(torch.load("HandPoseVAE_2.pth"))
+    if args.model_reduction == 'AE':
+        model_reduction = HandPoseAE(input_dim=Y.shape[1], latent_dim = latent_dimension)
+        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
+        #model_reduction.load_state_dict(torch.load("HandPoseAE_2.pth"))   
+    elif args.model_reduction == 'VAE':
+        model_reduction = HandPoseVAE(input_dim=Y.shape[1], latent_dim=latent_dimension)
+        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
+        #model_reduction.load_state_dict(torch.load("HandPoseVAE_2.pth"))
     
     model_reduction.eval()
     loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, model_reduction)
-    save_path = args.save_model if args.save_model else args.model + f"_{args.model_reduction}.pth"
-    
+    #save_path = args.save_model if args.save_model else args.model + f"_{args.model_reduction}.pth"
+    save_path = model_save_path;
+
+    training_info["Latent Space Dimension"] = latent_dimension
+    training_info["Model Reduction Type"] = args.model  # AE or VAE
+
     output_dim = Y.shape[1]
     train_loader, test_loader = prepare_dataloaders(X, Y, batch_size=args.batch_size)
+    training_info["Final Output Dimension"] = output_dim
 
     if args.model == 'FCNN':
         model = HandPoseFCNN(input_dim=4, output_dim=output_dim)
     elif args.model == 'Transformer':
         model = HandPoseTransformer(input_dim=4, fix_indices=fix_Indices)
+    
+    print("This is the dataset:", training_info["Dataset"])
 
     print(f"\nThis is the model: \n\n{model}")
+    training_info["Regression Model Architecture"] = str(model)
 
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
@@ -218,9 +258,20 @@ if __name__ == "__main__":
         epochs=args.epochs,
         save_path=save_path
     )
+    # Update training info with final results
+    training_info["Training Start Time"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    training_info["Training Duration"] = str(datetime.now() - (datetime.now()))
+    training_info["Best Test Loss"] = min(test_losses)
+    training_info["Final Learning Rate"] = optimizer.param_groups[0]['lr']
+    training_info["Model Save Path"] = model_save_path
+
+    # Save training info
+    save_training_info(training_dir, training_info)
 
     if args.plot_mse:
-        os.makedirs("plots", exist_ok=True)
+
+        plot_dir = os.path.join(training_dir, "plots")
+        os.makedirs(plot_dir, exist_ok=True)
         plt.figure(figsize=(10, 5))
         plt.plot(train_losses, label='Train Loss')
         plt.plot(test_losses, label='Test Loss')
@@ -230,8 +281,13 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
+        plot_path = os.path.join(plot_dir, "mse_loss_curve_latentspace.png")
         #plt.savefig("plots/mse_loss_curve.png")
         plt.close()
+        training_info["Plot Path"] = plot_path
 
     print("Training complete. Model saved to:", save_path)
     print(f"Best test loss: {min(test_losses):.6f}")
+    print("\nTraining Summary:")
+    for key, value in training_info.items():
+        print(f"{key}: {value}")

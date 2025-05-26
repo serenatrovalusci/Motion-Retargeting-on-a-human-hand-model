@@ -270,7 +270,7 @@ if __name__ == "__main__":
     plt.plot(test_losses, label='Test Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.title('MSE Loss Curve (PCA in loss)' if args.pca_variance < 1.0 else 'Weighted MSE Loss Curve')
+    plt.title('MSE Loss Curve (PCA)' if args.pca_variance < 1.0 else 'Weighted MSE Loss Curve')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
