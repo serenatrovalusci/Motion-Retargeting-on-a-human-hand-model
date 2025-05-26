@@ -283,6 +283,7 @@ if __name__ == "__main__":
         plt.tight_layout()
         plot_path = os.path.join(plot_dir, "mse_loss_curve_latentspace.png")
         #plt.savefig("plots/mse_loss_curve.png")
+        plt.savefig(plot_path)
         plt.close()
         training_info["Plot Path"] = plot_path
 
