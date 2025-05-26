@@ -14,7 +14,7 @@ import argparse
 import os
 from datetime import datetime, timedelta
 
-def create_training_directory(base_dir="training_results"):
+def create_training_directory(base_dir="training_results/training_latentspace_results"):
     # Create a unique directory name with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     training_dir = os.path.join(base_dir, f"training_{timestamp}")
