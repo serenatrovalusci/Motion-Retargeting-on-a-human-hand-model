@@ -1,6 +1,5 @@
 from HandPoseClass import *
-from train import *
-
+from train_losspca import *
 from datetime import datetime
 
 def create_training_directory(base_dir="training_results/training_reduction_models"):

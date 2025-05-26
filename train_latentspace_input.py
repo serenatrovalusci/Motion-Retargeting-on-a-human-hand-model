@@ -12,7 +12,7 @@ from HandPoseClass import *
 from scipy.stats import zscore
 import argparse
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 def create_training_directory(base_dir="training_results/training_latentspace_results"):
     # Create a unique directory name with timestamp
@@ -83,16 +83,16 @@ def prepare_dataloaders(X, Y, batch_size=64):
     return train_loader, test_loader
 
 
-def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, min_vals, max_vals,epochs=300, save_path="FCNN_VAE.pth"): 
+def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, min_vals, max_vals,epochs=300, save_path="FCNN_VAE.pth", use_constraint_loss=False): 
     train_losses, test_losses = [], []
     best_loss, best_model_state = float('inf'), None
 
     for epoch in range(epochs):
         model.train()
-        train_loss = sum_step_loss(model, train_loader, loss_fn, min_vals, max_vals, optimizer, training=True)
+        train_loss = sum_step_loss(model, train_loader, loss_fn, min_vals, max_vals, optimizer, training=True, use_constraint_loss=False)
 
         model.eval()
-        test_loss = sum_step_loss(model, test_loader, loss_fn, min_vals, max_vals, optimizer, training=False)
+        test_loss = sum_step_loss(model, test_loader, loss_fn, min_vals, max_vals, optimizer, training=False, use_constraint_loss=False)
 
         scheduler.step(test_loss)
         train_losses.append(train_loss)
@@ -113,7 +113,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, loss_fn, min_v
     return train_losses, test_losses
 
 
-def sum_step_loss(model, loader, loss_fn, min_vals, max_vals, optimizer=None, training=False):
+def sum_step_loss(model, loader, loss_fn, min_vals, max_vals, optimizer=None, training=False, use_constraint_loss=False):
     total_loss = 0.0
     for xb, yb in loader:
         preds = model(xb)
@@ -130,8 +130,11 @@ def sum_step_loss(model, loader, loss_fn, min_vals, max_vals, optimizer=None, tr
         loss_constraint = joint_constraint_loss(preds, min_dev, max_dev)
 
         # 3. Combine
-        loss = loss_main + loss_constraint
-
+        #loss = loss_main + loss_constraint
+        loss = loss_main
+        if use_constraint_loss:
+            loss += loss_constraint
+            
         if training:
             optimizer.zero_grad()
             loss.backward()
@@ -168,12 +171,15 @@ def weighted_mse_loss(preds, targets, fix_indices):
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with AE encoder-based loss.")
     parser.add_argument('--model_reduction', type=str, help='Choose the model: AE/VAE')
+    parser.add_argument('--ae_model_path', type=str, required=True, help='Path to pre-trained AE or VAE model')
     parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
-    parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
+    #parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
     parser.add_argument('--plot_mse', action='store_true', help='Plot MSE loss curves')
+    parser.add_argument('--use_constraint_loss', action='store_true', help='Use constraint loss in training')
+
     return parser.parse_args()
 
 
@@ -181,13 +187,14 @@ if __name__ == "__main__":
     args = parse_args()
 
     print("\nHelping prompt : ")
-    print("python train.py --model FCNN --save_model FCNN_Example \n")
+    print("python train.py --model FCNN --model_reduction AE --use_constraint_loss \n")
 
     print("----------- Training Configuration -----------")
     print(f"Z-score outlier threshold: {args.z_thresh}")
     print(f"Epochs:                    {args.epochs}")
     print(f"Batch size:                {args.batch_size}")
     print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
+    print(f"Use Constraint loss:       {'Yes' if args.use_constraint_loss else 'No'}")
     print("---------------------------------------------")
 
     # Create training directory
@@ -217,24 +224,27 @@ if __name__ == "__main__":
     #joblib.dump(scaler_y, "scaler_AE.save")
     if args.model_reduction == 'AE':
         model_reduction = HandPoseAE(input_dim=Y.shape[1], latent_dim = latent_dimension)
-        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
+        #model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
         #model_reduction.load_state_dict(torch.load("HandPoseAE_2.pth"))   
     elif args.model_reduction == 'VAE':
         model_reduction = HandPoseVAE(input_dim=Y.shape[1], latent_dim=latent_dimension)
-        model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
+        #model_save_path = os.path.join(training_dir, args.save_model if args.save_model else f"{args.model}_{latent_dimension}_latentdim.pth")
         #model_reduction.load_state_dict(torch.load("HandPoseVAE_2.pth"))
-    
+   
+    model_reduction.load_state_dict(torch.load(args.ae_model_path))
+    training_info["AE/VAE Model Used"] = args.ae_model_path
     model_reduction.eval()
     loss_type = lambda preds, targets: mse_loss_with_encoder(preds, targets, model_reduction)
     #save_path = args.save_model if args.save_model else args.model + f"_{args.model_reduction}.pth"
-    save_path = model_save_path;
+    #save_path = model_save_path;
 
     training_info["Latent Space Dimension"] = latent_dimension
-    training_info["Model Reduction Type"] = args.model  # AE or VAE
+    training_info["Model Reduction Path"] = args.ae_model_path  # AE or VAE
 
     output_dim = Y.shape[1]
     train_loader, test_loader = prepare_dataloaders(X, Y, batch_size=args.batch_size)
     training_info["Final Output Dimension"] = output_dim
+    regression_model_path = os.path.join(training_dir, f"{args.model}_{args.model_reduction}_regression.pth")
 
     if args.model == 'FCNN':
         model = HandPoseFCNN(input_dim=4, output_dim=output_dim)
@@ -248,7 +258,8 @@ if __name__ == "__main__":
 
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
-
+    
+    start_time = datetime.now()
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
@@ -256,15 +267,18 @@ if __name__ == "__main__":
         min_vals=min_vals,
         max_vals=max_vals,
         epochs=args.epochs,
-        save_path=save_path
+        use_constraint_loss=args.use_constraint_loss
     )
+    duration = datetime.now() - start_time
     # Update training info with final results
-    training_info["Training Start Time"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    training_info["Training Duration"] = str(datetime.now() - (datetime.now()))
+    training_info["Training Start Time"] = start_time.strftime('%Y-%m-%d %H:%M:%S')
+    training_info["Training Duration"] = str(duration)
     training_info["Best Test Loss"] = min(test_losses)
     training_info["Final Learning Rate"] = optimizer.param_groups[0]['lr']
-    training_info["Model Save Path"] = model_save_path
+    torch.save(model.state_dict(), regression_model_path)
+    training_info["Regression Model Save Path"] = regression_model_path
 
+    training_info["Constraint Loss Used"] = args.use_constraint_loss
     # Save training info
     save_training_info(training_dir, training_info)
 
@@ -287,7 +301,7 @@ if __name__ == "__main__":
         plt.close()
         training_info["Plot Path"] = plot_path
 
-    print("Training complete. Model saved to:", save_path)
+    print("Training complete.")
     print(f"Best test loss: {min(test_losses):.6f}")
     print("\nTraining Summary:")
     for key, value in training_info.items():
