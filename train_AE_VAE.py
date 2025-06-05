@@ -113,39 +113,6 @@ def train_autoencoder(model, train_loader, test_loader, optimizer, scheduler, lo
     return train_losses, test_losses
 
 
-# closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-# fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
-# Y,scaler = load_data("dataset/hand_dataset_all_fingers.csv", closure_columns, fix_indices)
-
-# joblib.dump(scaler, "scaler_AE.save")
-
-# input_dim = Y.shape[1]
-
-# dataset = TensorDataset(torch.FloatTensor(Y))  
-
-# print(f"Dataset size after outlier removal: {len(dataset)}")
-
-# dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
-
-# train_loader, test_loader = train_test_split(Y, test_size=0.2, random_state=42)
-# train_loader = DataLoader(TensorDataset(torch.FloatTensor(train_loader)), batch_size=64, shuffle=True)
-# test_loader = DataLoader(TensorDataset(torch.FloatTensor(test_loader)), batch_size=64)
-
-# model = HandPoseAE(input_dim=input_dim, latent_dim=30)
-# optimizer = torch.optim.Adam(model.parameters(), lr= 1e-3)
-# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
-# loss_fn = nn.MSELoss()
-
-# train_autoencoder(
-#     model=model,
-#     train_loader=train_loader,
-#     test_loader=test_loader,
-#     optimizer=optimizer,
-#     scheduler=scheduler,
-#     loss_fn=loss_fn,
-#     epochs=500,
-#     save_path="HandPoseAE_2.pth"
-# )
 
 def main():
     #### prompt python train_AE_VAE.py --model VAE --latent_dim 40 --epochs 300 --save_model my_ae_model.pth ####
@@ -215,3 +182,39 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
+# fix_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
+# Y,scaler = load_data("dataset/hand_dataset_all_fingers.csv", closure_columns, fix_indices)
+
+# joblib.dump(scaler, "scaler_AE.save")
+
+# input_dim = Y.shape[1]
+
+# dataset = TensorDataset(torch.FloatTensor(Y))  
+
+# print(f"Dataset size after outlier removal: {len(dataset)}")
+
+# dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+# train_loader, test_loader = train_test_split(Y, test_size=0.2, random_state=42)
+# train_loader = DataLoader(TensorDataset(torch.FloatTensor(train_loader)), batch_size=64, shuffle=True)
+# test_loader = DataLoader(TensorDataset(torch.FloatTensor(test_loader)), batch_size=64)
+
+# model = HandPoseAE(input_dim=input_dim, latent_dim=30)
+# optimizer = torch.optim.Adam(model.parameters(), lr= 1e-3)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
+# loss_fn = nn.MSELoss()
+
+# train_autoencoder(
+#     model=model,
+#     train_loader=train_loader,
+#     test_loader=test_loader,
+#     optimizer=optimizer,
+#     scheduler=scheduler,
+#     loss_fn=loss_fn,
+#     epochs=500,
+#     save_path="HandPoseAE_2.pth"
+# )

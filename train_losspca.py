@@ -164,7 +164,7 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
-    parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=2, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
     parser.add_argument('--plot_mse', action='store_true', help='Plot MSE loss curves')
@@ -196,7 +196,8 @@ if __name__ == "__main__":
 
     X, Y, scaler_y = load_data('dataset/hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
     training_info = {
-    #"Model": args.model,
+    "Model": args.model,
+    "PCA Variance": args.pca_variance,
     "Z-score Threshold": args.z_thresh,
     "Epochs": args.epochs,
     "Batch Size": args.batch_size,
