@@ -173,7 +173,7 @@ if __name__ == "__main__":
     print(f"Z-score outlier threshold: {args.z_thresh}")
     print(f"Epochs:                    {args.epochs}")
     print(f"Batch size:                {args.batch_size}")
-    print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
+    print(f"Plot loss curve:           {'Yes'}") #if args.plot_mse else 'No'
     print("---------------------------------------------\n")
 
     # Create training directory
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     z_thresh = args.z_thresh
     # angoli fixati per una performance migliore
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43] # all the thumb angles(9) + 4 index angles + 2 middle angles
-
+    #fix_Indices = []
     X, Y, scaler_y = load_data('dataset/hand_dataset_all_fingers.csv', closure_columns, fix_Indices)
 
     # Prepare training info dictionary
@@ -242,7 +242,8 @@ if __name__ == "__main__":
     
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
-
+    
+    start_time = datetime.now()
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
@@ -252,9 +253,10 @@ if __name__ == "__main__":
         fix_indices=fix_Indices,
         pca=pca 
     )
-
+    duration = datetime.now() - start_time
     # Update training info with final results
-    training_info["Training Duration"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    training_info["Training Start Time"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    training_info["Training Duration"] = str(duration)
     training_info["Best Test Loss"] = min(test_losses)
     training_info["Final Learning Rate"] = optimizer.param_groups[0]['lr']
     training_info["Model Save Path"] = model_save_path
