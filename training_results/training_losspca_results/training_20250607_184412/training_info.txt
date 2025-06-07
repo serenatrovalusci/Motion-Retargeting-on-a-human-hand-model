@@ -1,5 +1,7 @@
+Model: FCNN
+PCA Variance: 0.999999995
 Z-score Threshold: 2.5
-Epochs: 2
+Epochs: 300
 Batch Size: 64
 Fixed Indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
 Number of Fixed Indices: 17
@@ -7,10 +9,10 @@ Input Dimension: 4
 Output Dimension: 62
 Dataset: dataset/hand_dataset_all_fingers.csv
 Closure Columns: ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-Training Start Time: 2025-06-05 17:39:32
-Scaler Path: training_results/training_losspca_results/training_20250605_173931/scaler.save
-PCA Components: 15
-Explained Variance: 0.995
+Training Start Time: 2025-06-07 18:44:12
+Scaler Path: training_results/training_losspca_results\training_20250607_184412\scaler.save
+PCA Components: 45
+Explained Variance: 0.999999995
 Final Output Dimension: 62
 Regression Model Architecture: HandPoseFCNN(
   (net): Sequential(
@@ -29,7 +31,7 @@ Regression Model Architecture: HandPoseFCNN(
     (12): Linear(in_features=64, out_features=62, bias=True)
   )
 )
-Training Duration: 0:00:00
-Best Test Loss: 0.16447061596729173
-Final Learning Rate: 0.001
-Model Save Path: training_results/training_losspca_results/training_20250605_173931/FCNN_15_PCA.pth
+Training Duration: 0:05:02.147273
+Best Test Loss: 0.007082226111709421
+Final Learning Rate: 1.52587890625e-08
+Model Save Path: training_results/training_losspca_results\training_20250607_184412\FCNN_45_PCA.pth

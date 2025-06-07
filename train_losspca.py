@@ -164,7 +164,7 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
-    parser.add_argument('--epochs', type=int, default=2, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
     parser.add_argument('--plot_mse', action='store_true', help='Plot MSE loss curves')
@@ -187,6 +187,9 @@ if __name__ == "__main__":
     print("---------------------------------------------")
 
     training_dir = create_training_directory()
+    start_time = datetime.now()
+
+
     print(f"All training results will be saved in: {training_dir}")
 
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
@@ -207,7 +210,7 @@ if __name__ == "__main__":
     "Output Dimension": Y.shape[1],
     "Dataset": 'dataset/hand_dataset_all_fingers.csv',
     "Closure Columns": closure_columns,
-    "Training Start Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    "Training Start Time": start_time.strftime("%Y-%m-%d %H:%M:%S")}
     
     # Save scaler in the training directory
     scaler_path = os.path.join(training_dir, "scaler.save")
@@ -259,8 +262,9 @@ if __name__ == "__main__":
     )
 
     # Update training info with final results
-    training_info["Training Start Time"] = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    training_info["Training Duration"] = str(datetime.now() - (datetime.now()))
+    training_duration = datetime.now() - start_time
+    training_info["Training Duration"] = str(training_duration)
+
     training_info["Best Test Loss"] = min(test_losses)
     training_info["Final Learning Rate"] = optimizer.param_groups[0]['lr']
     training_info["Model Save Path"] = model_save_path
@@ -282,7 +286,7 @@ if __name__ == "__main__":
             plt.grid(True)
             plt.tight_layout()
             #plt.savefig("plots/mse_loss_curve.png")
-            plot_path = os.path.join(plot_dir, "mse_loss_curve_latentspace.png")
+            plot_path = os.path.join(plot_dir, "mse_loss_curve_PCA.png")
             plt.savefig(plot_path)
             plt.close()
             training_info["Plot Path"] = plot_path
