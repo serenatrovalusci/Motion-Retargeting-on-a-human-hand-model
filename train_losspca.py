@@ -165,6 +165,7 @@ def parse_args():
     parser.add_argument('--pca_variance', type=float, default=1.0, help='If want to use PCA, define the variance')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
     parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
     parser.add_argument('--plot_mse', action='store_true', help='Plot MSE loss curves')
@@ -183,7 +184,7 @@ if __name__ == "__main__":
     print(f"Z-score outlier threshold: {args.z_thresh}")
     print(f"Epochs:                    {args.epochs}")
     print(f"Batch size:                {args.batch_size}")
-    print(f"Plot loss curve:           {'Yes' if args.plot_mse else 'No'}")
+    print(f"Plot loss curve:           {'Yes'}")               
     print("---------------------------------------------")
 
     training_dir = create_training_directory()
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, verbose=True)
 
-  
+    start_time = datetime.now()
     train_losses, test_losses = train(
         model, train_loader, test_loader,
         optimizer, scheduler,
@@ -260,7 +261,7 @@ if __name__ == "__main__":
         fix_indices=fix_Indices,
         pca=pca 
     )
-
+    duration = datetime.now() - start_time
     # Update training info with final results
     training_duration = datetime.now() - start_time
     training_info["Training Duration"] = str(training_duration)

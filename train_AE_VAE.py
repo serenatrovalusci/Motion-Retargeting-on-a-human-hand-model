@@ -166,6 +166,7 @@ def main():
         "Batch Size": args.batch_size,
         "Training Start Time": training_start_time,
         "Training End Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Training Duration": datetime.now() - datetime.strptime(training_start_time, "%Y-%m-%d %H:%M:%S"),
         "Dataset": "dataset/hand_dataset_all_fingers.csv",
         "Input Dimension": input_dim,
         "Best Test Loss": min(test_losses),
