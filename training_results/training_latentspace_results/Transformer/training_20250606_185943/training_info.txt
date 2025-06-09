@@ -1,6 +1,6 @@
-Model: FCNN
+Model: Transformer
 Z-score Threshold: 2.5
-Epochs: 2
+Epochs: 300
 Batch Size: 64
 Fixed Indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
 Number of Fixed Indices: 17
@@ -8,32 +8,79 @@ Input Dimension: 4
 Output Dimension: 62
 Dataset: dataset/hand_dataset_all_fingers.csv
 Closure Columns: ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-Training Start Time: 2025-06-05 18:14:38
-AE/VAE Model Used: training_results/training_reduction_models/training_20250605_180718/HandPoseAE_30latent.pth
-Latent Space Dimension: 30
-Model Reduction Path: training_results/training_reduction_models/training_20250605_180718/HandPoseAE_30latent.pth
+Training Start Time: 2025-06-06 18:59:44
+AE/VAE Model Used: AE_training_results/AE_10
+Latent Space Dimension: 10
+Model Reduction Path: AE_training_results/AE_10
 Final Output Dimension: 62
-Regression Model Architecture: HandPoseFCNN(
-  (net): Sequential(
-    (0): Linear(in_features=4, out_features=512, bias=True)
-    (1): LeakyReLU(negative_slope=0.01)
-    (2): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (3): Linear(in_features=512, out_features=256, bias=True)
-    (4): LeakyReLU(negative_slope=0.01)
-    (5): Dropout(p=0.3, inplace=False)
-    (6): Linear(in_features=256, out_features=128, bias=True)
-    (7): LeakyReLU(negative_slope=0.01)
-    (8): Dropout(p=0.3, inplace=False)
-    (9): Linear(in_features=128, out_features=64, bias=True)
-    (10): LeakyReLU(negative_slope=0.01)
-    (11): BatchNorm1d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (12): Linear(in_features=64, out_features=62, bias=True)
+Regression Model Architecture: HandPoseTransformer(
+  (input_embedding): Sequential(
+    (0): Linear(in_features=4, out_features=64, bias=True)
+    (1): GELU(approximate='none')
+    (2): Linear(in_features=64, out_features=128, bias=True)
+    (3): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+  )
+  (pos_encoder): PositionalEncoding(
+    (dropout): Dropout(p=0.1, inplace=False)
+  )
+  (transformer): TransformerEncoder(
+    (layers): ModuleList(
+      (0-2): 3 x TransformerEncoderLayer(
+        (self_attn): MultiheadAttention(
+          (out_proj): NonDynamicallyQuantizableLinear(in_features=128, out_features=128, bias=True)
+        )
+        (linear1): Linear(in_features=128, out_features=512, bias=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+        (linear2): Linear(in_features=512, out_features=128, bias=True)
+        (norm1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+        (norm2): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+        (dropout1): Dropout(p=0.1, inplace=False)
+        (dropout2): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (output_heads): ModuleDict(
+    (thumb): FingerHead(
+      (decoder): Sequential(
+        (0): Linear(in_features=128, out_features=64, bias=True)
+        (1): GELU(approximate='none')
+        (2): Linear(in_features=64, out_features=18, bias=True)
+      )
+    )
+    (index): FingerHead(
+      (decoder): Sequential(
+        (0): Linear(in_features=128, out_features=64, bias=True)
+        (1): GELU(approximate='none')
+        (2): Linear(in_features=64, out_features=13, bias=True)
+      )
+    )
+    (middle): FingerHead(
+      (decoder): Sequential(
+        (0): Linear(in_features=128, out_features=64, bias=True)
+        (1): GELU(approximate='none')
+        (2): Linear(in_features=64, out_features=11, bias=True)
+      )
+    )
+    (ring): FingerHead(
+      (decoder): Sequential(
+        (0): Linear(in_features=128, out_features=64, bias=True)
+        (1): GELU(approximate='none')
+        (2): Linear(in_features=64, out_features=10, bias=True)
+      )
+    )
+    (pinky): FingerHead(
+      (decoder): Sequential(
+        (0): Linear(in_features=128, out_features=64, bias=True)
+        (1): GELU(approximate='none')
+        (2): Linear(in_features=64, out_features=10, bias=True)
+      )
+    )
   )
 )
 Min Values: [-1.2642879486083984, -1.3787691593170166, -1.572296380996704, -1.0325850248336792, -1.1246815919876099, -1.1967226266860962, -1.1501283645629883, -1.850645661354065, -1.5899194478988647, -1.462812066078186, -1.145330786705017, -1.2908920049667358, -0.9823948740959167, -1.6516728401184082, -1.5044523477554321, -1.6309328079223633, -2.252502202987671, -3.3738255500793457, -0.7914405465126038, -1.6006569862365723, -0.8334277868270874, -0.6872733235359192, -0.7140535116195679, -3.0634348392486572, -2.3439114093780518, -1.4126520156860352, -1.6769640445709229, -0.7606873512268066, -5.086015701293945, -3.309560537338257, -1.4531142711639404, -1.078088641166687, -0.812335729598999, -0.8249399065971375, -0.8572599291801453, -0.8761067986488342, -0.8744410276412964, -1.4444501399993896, -0.5923534631729126, -3.327268362045288, -0.8493010401725769, -1.875482439994812, -1.1168617010116577, -0.8677822947502136, -0.8021974563598633, -1.0738134384155273, -0.9435155987739563, -0.9277247786521912, -1.3488415479660034, -0.8824392557144165, -1.4130712747573853, -1.0004554986953735, -1.118618369102478, -0.9188592433929443, -0.7749557495117188, -0.7581964731216431, -0.9501485824584961, -0.9006990790367126, -1.3380190134048462, -0.7524994015693665, -1.6096011400222778, -0.9976372718811035]
 Max Values: [2.349191188812256, 1.8179837465286255, 1.2245653867721558, 2.7301101684570312, 1.628959059715271, 1.572188138961792, 2.5341737270355225, 1.3436689376831055, 1.1500091552734375, 2.5333383083343506, 1.8927016258239746, 1.691207766532898, 2.086073637008667, 1.6912819147109985, 1.0988352298736572, 2.3196911811828613, 1.8886340856552124, 1.5782605409622192, 1.577376127243042, 0.7966437935829163, 1.4531081914901733, 3.3537943363189697, 1.4134868383407593, 0.8272569179534912, 1.5462957620620728, 0.7086566090583801, 1.897918939590454, 1.4544872045516968, 2.072904109954834, 0.5627400875091553, 0.7540870904922485, 1.3171603679656982, 1.5496476888656616, 1.5501338243484497, 2.559396505355835, 1.2313467264175415, 1.2225759029388428, 1.5333311557769775, 1.8740957975387573, 3.1699891090393066, 3.7056782245635986, 0.6128274202346802, 1.264917016029358, 1.5018357038497925, 1.5306137800216675, 2.237877607345581, 1.2415255308151245, 1.2077491283416748, 1.6012953519821167, 1.932529330253601, 1.8816020488739014, 1.678383708000183, 1.249451994895935, 1.4606088399887085, 1.5246962308883667, 2.38206148147583, 1.2924532890319824, 1.2559913396835327, 1.5529241561889648, 2.1973068714141846, 1.643735647201538, 1.9129383563995361]
-Training Duration: 0:00:02.481331
-Best Test Loss: 0.02712642672858366
-Final Learning Rate: 0.001
-Regression Model Save Path: training_results/training_latentspace_results/training_20250605_181437/FCNN_AE_regression.pth
-Constraint Loss Used: False
+Training Duration: 0:13:51.794142
+Best Test Loss: 0.005322736922392025
+Final Learning Rate: 1.52587890625e-08
+Regression Model Save Path: training_results/training_latentspace_results/training_20250606_185943/Transformer_AE_regression.pth
+Constraint Loss Used: True

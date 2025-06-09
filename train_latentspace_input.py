@@ -171,10 +171,11 @@ def weighted_mse_loss(preds, targets, fix_indices):
 def parse_args():
     parser = argparse.ArgumentParser(description="Train hand pose model with AE encoder-based loss.")
     parser.add_argument('--model_reduction', type=str, help='Choose the model: AE/VAE')
+    parser.add_argument('--latent_dim', type=int, default=30, help='Latent space dimension for AE or VAE')
     parser.add_argument('--ae_model_path', type=str, required=True, help='Path to pre-trained AE or VAE model')
     parser.add_argument('--model', type=str, help='Choose the model: FCNN/Transformer')
     parser.add_argument('--z_thresh', type=float, default=2.5, help='Z-score threshold for outlier removal')
-    parser.add_argument('--epochs', type=int, default=2, help='Number of training epochs')
+    parser.add_argument('--epochs', type=int, default=300, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     #parser.add_argument('--save_model', type=str, default=None, help='Optional custom model save path')
     parser.add_argument('--plot_mse', action='store_true', help='Plot MSE loss curves')
@@ -204,7 +205,7 @@ if __name__ == "__main__":
     closure_columns = ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
     z_thresh = args.z_thresh
     fix_Indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 16, 17, 25, 26, 34, 43]
-    latent_dimension = 30;
+    latent_dimension = args.latent_dim
     X, Y, scaler_y = load_data('dataset/hand_dataset_all_fingers.csv', closure_columns, fix_Indices, z_thresh)
     
     min_vals, max_vals = find_min_max(Y)
