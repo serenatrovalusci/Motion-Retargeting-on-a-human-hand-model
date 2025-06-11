@@ -13,6 +13,7 @@ Training Start Time: 2025-06-07 13:35:51
 PCA Components: N/A
 Final Output Dimension: 45
 Scaler Path: training_results/training_synergies_results/training_20250607_133550/scaler.save
+PCA Path: training_results/training_synergies_results/training_20250607_133550/pca.save
 Model Architecture: HandPoseFCNN(
   (net): Sequential(
     (0): Linear(in_features=4, out_features=512, bias=True)
