@@ -59,9 +59,9 @@ if __name__ == "__main__":
     weights_path = config.get("Model Save Path", "model.pth")
     scaler_path = config.get("Scaler Path", "scaler.save")
     pca_path = config.get("PCA Path", None)
-    print("not using PCA\n" if pca_path == None else f"using PCA: {pca_components}")
-    output_dim = config.get("Output Dimension", 45 + len(fix_indices))
-    print(f"output_dim: {output_dim}")
+    print("not using PCA\n" if pca_path == None else f"using PCA: {pca_components}\n")
+    output_dim = config.get("Final Output Dimension", 45 + len(fix_indices))
+    print(f"net output dimention: {output_dim}\n")
 
     # Inizializzazione modello
     if model_type == 'FCNN':
