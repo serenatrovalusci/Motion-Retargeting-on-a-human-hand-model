@@ -88,11 +88,11 @@ if __name__ == "__main__":
                 data = conn.recv(16)  # 4 float32 = 16 bytes
                 if not data: break
 
-                input = np.frombuffer(data, dtype=np.float32)
-                output = model(torch.FloatTensor(input.reshape(1, -1))).numpy()
+                input = np.frombuffer(data, dtype=np.float32).copy()
+                output = model(torch.FloatTensor(input.reshape(1, -1))).detach().numpy()
+                if pca:
+                    output = pca.inverse_transform(output.reshape(1, -1))
                 output = scaler.inverse_transform(output).flatten()
                 
-                if pca:
-                    output = pca.inverse_transform(output.reshape(1, -1)).flatten()
                 
                 conn.sendall(reconstruct_output(output, fix_indices).astype(np.float32).tobytes())
