@@ -48,7 +48,7 @@ if __name__ == "__main__":
     config = load_config(args.info_path)
 
     print("\nHelping prompt : ")
-    print("python main_synergies.py --info_path training_results\training_20250521_150116\training_info.txt \n")
+    print("python main_synergies.py --info_path training_results\training_synergies_results\training_20250521_150116\training_info.txt \n")
     
     # Parametri essenziali (con fallback)
     pca_components = config.get("PCA Components", 0)
@@ -59,9 +59,9 @@ if __name__ == "__main__":
     weights_path = config.get("Model Save Path", "model.pth")
     scaler_path = config.get("Scaler Path", "scaler.save")
     pca_path = config.get("PCA Path", None)
-    print("not using PCA\n" if pca_path == None else f"using PCA: {pca_components}")
-    output_dim = config.get("Output Dimension", 45 + len(fix_indices))
-    print(f"output_dim: {output_dim}")
+    print("not using PCA\n" if pca_path == None else f"using PCA: {pca_components}\n")
+    output_dim = config.get("Final Output Dimension", 45 + len(fix_indices))
+    print(f"net output dimention: {output_dim}\n")
 
     # Inizializzazione modello
     if model_type == 'FCNN':
@@ -88,11 +88,11 @@ if __name__ == "__main__":
                 data = conn.recv(16)  # 4 float32 = 16 bytes
                 if not data: break
 
-                input = np.frombuffer(data, dtype=np.float32)
-                output = model(torch.FloatTensor(input.reshape(1, -1))).numpy()
+                input = np.frombuffer(data, dtype=np.float32).copy()
+                output = model(torch.FloatTensor(input.reshape(1, -1))).detach().numpy()
+                if pca:
+                    output = pca.inverse_transform(output.reshape(1, -1))
                 output = scaler.inverse_transform(output).flatten()
                 
-                if pca:
-                    output = pca.inverse_transform(output.reshape(1, -1)).flatten()
                 
                 conn.sendall(reconstruct_output(output, fix_indices).astype(np.float32).tobytes())

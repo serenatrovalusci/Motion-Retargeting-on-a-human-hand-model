@@ -227,6 +227,7 @@ if __name__ == "__main__":
     # Save pca in the training directory
     pca_path = os.path.join(training_dir, "pca.save")
     joblib.dump(pca, pca_path)
+    training_info["PCA Path"] = pca_path
 
     train_loader, test_loader = prepare_dataloaders(X, Y, batch_size=args.batch_size)
 
