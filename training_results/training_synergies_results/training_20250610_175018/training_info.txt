@@ -9,11 +9,11 @@ Input Dimension: 4
 Output Dimension: 62
 Dataset: dataset/hand_dataset_all_fingers.csv
 Closure Columns: ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-Training Start Time: 2025-06-07 10:33:07
+Training Start Time: 2025-06-10 18:09:07
 PCA Components: 45
 Explained Variance: 0.999999995
 Final Output Dimension: 45
-Scaler Path: training_results/training_synergies_results/training_20250607_103307/scaler.save
+Scaler Path: training_results/training_synergies_results\training_20250610_175018\scaler.save
 Model Architecture: HandPoseTransformer(
   (input_embedding): Sequential(
     (0): Linear(in_features=4, out_features=64, bias=True)
@@ -26,31 +26,7 @@ Model Architecture: HandPoseTransformer(
   )
   (transformer): TransformerEncoder(
     (layers): ModuleList(
-      (0): TransformerEncoderLayer(
-        (self_attn): MultiheadAttention(
-          (out_proj): NonDynamicallyQuantizableLinear(in_features=128, out_features=128, bias=True)
-        )
-        (linear1): Linear(in_features=128, out_features=512, bias=True)
-        (dropout): Dropout(p=0.1, inplace=False)
-        (linear2): Linear(in_features=512, out_features=128, bias=True)
-        (norm1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
-        (norm2): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
-        (dropout1): Dropout(p=0.1, inplace=False)
-        (dropout2): Dropout(p=0.1, inplace=False)
-      )
-      (1): TransformerEncoderLayer(
-        (self_attn): MultiheadAttention(
-          (out_proj): NonDynamicallyQuantizableLinear(in_features=128, out_features=128, bias=True)
-        )
-        (linear1): Linear(in_features=128, out_features=512, bias=True)
-        (dropout): Dropout(p=0.1, inplace=False)
-        (linear2): Linear(in_features=512, out_features=128, bias=True)
-        (norm1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
-        (norm2): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
-        (dropout1): Dropout(p=0.1, inplace=False)
-        (dropout2): Dropout(p=0.1, inplace=False)
-      )
-      (2): TransformerEncoderLayer(
+      (0-2): 3 x TransformerEncoderLayer(
         (self_attn): MultiheadAttention(
           (out_proj): NonDynamicallyQuantizableLinear(in_features=128, out_features=128, bias=True)
         )
@@ -103,7 +79,7 @@ Model Architecture: HandPoseTransformer(
   )
   (last): Linear(in_features=62, out_features=45, bias=True)
 )
-Training Duration: 2025-06-07 10:56:18
-Best Test Loss: 0.005978129916217799
+Training Duration: 0:18:46.066265
+Best Test Loss: 0.0059636019938018245
 Final Learning Rate: 1.52587890625e-08
-Model Save Path: training_results/training_synergies_results/training_20250607_103307/Transformer_45_PCA.pth
+Model Save Path: training_results/training_synergies_results\training_20250610_175018\Transformer_45_PCA.pth

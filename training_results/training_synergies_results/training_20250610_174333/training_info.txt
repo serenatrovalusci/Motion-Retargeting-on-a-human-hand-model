@@ -9,11 +9,11 @@ Input Dimension: 4
 Output Dimension: 62
 Dataset: dataset/hand_dataset_all_fingers.csv
 Closure Columns: ['ThumbClosure', 'IndexClosure', 'MiddleClosure', 'ThumbAbduction']
-Training Start Time: 2025-06-05 18:23:17
+Training Start Time: 2025-06-10 17:48:08
 PCA Components: 45
 Explained Variance: 0.999999995
 Final Output Dimension: 45
-Scaler Path: training_results/training_synergies_results/training_20250605_182317/scaler.save
+Scaler Path: training_results/training_synergies_results\training_20250610_174333\scaler.save
 Model Architecture: HandPoseFCNN(
   (net): Sequential(
     (0): Linear(in_features=4, out_features=512, bias=True)
@@ -31,7 +31,7 @@ Model Architecture: HandPoseFCNN(
     (12): Linear(in_features=64, out_features=45, bias=True)
   )
 )
-Training Duration: 2025-06-05 18:26:49
-Best Test Loss: 0.00697566503132924
+Training Duration: 0:04:31.507539
+Best Test Loss: 0.007320270042155901
 Final Learning Rate: 1.52587890625e-08
-Model Save Path: training_results/training_synergies_results/training_20250605_182317/FCNN_45_PCA.pth
+Model Save Path: training_results/training_synergies_results\training_20250610_174333\FCNN_45_PCA.pth
