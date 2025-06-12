@@ -14,6 +14,23 @@ from sklearn.decomposition import PCA
 import argparse
 import os
 from datetime import datetime
+def decode_output_sincos(output, fix_indices):
+    output = output.flatten()
+    final_angles = []
+    i = 0
+    angle_idx = 0
+    while i < len(output):
+        if angle_idx in fix_indices:
+            sin_val = output[i]
+            cos_val = output[i + 1]
+            angle = np.rad2deg(np.arctan2(sin_val, cos_val))
+            final_angles.append(angle)
+            i += 2
+        else:
+            final_angles.append(output[i])
+            i += 1
+        angle_idx += 1
+    return np.array(final_angles)
 
 def create_training_directory(base_dir="training_results/training_synergies_results"):
     # Create a unique directory name with timestamp
