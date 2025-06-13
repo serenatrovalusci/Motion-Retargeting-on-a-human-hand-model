@@ -82,7 +82,7 @@ def display_mae_histogram(mae1, mae2, label1, label2):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("histograms/latent_space_15.png")
+    plt.savefig("histograms/synergies_Transformer_45.png")
     plt.show()
 
 if __name__ == "__main__":
@@ -117,22 +117,22 @@ if __name__ == "__main__":
     # }
 
     # Compararison Latent Space Models
-    shared_scaler_path = "training_results/training_reduction_models/training_20250605_180718/scaler_AE.save"
+    #shared_scaler_path = "training_results/training_reduction_models/training_20250605_180718/scaler_AE.save"
 
     model_1 = {
-        "label": "FCNN AE 15",
-        "model": "training_results/training_latentspace_results/FCNN/training_20250606_185214/FCNN_AE_regression.pth",
-        "scaler": shared_scaler_path,
-        "pca": None,
-        "type": "FCNN",
+        "label": "Transformer No PCA",
+        "model": "training_results/training_synergies_results/training_20250607_151807/Transformer.pth",
+        "scaler": "training_results/training_synergies_results/training_20250607_151807/scaler.save",
+        "pca": None, 
+        "type": "Transformer",
         "decode": decode_output_sincos
     }
 
     model_2 = {
-        "label": "Transformer AE 15",
-        "model": "training_results/training_latentspace_results/Transformer/training_20250606_191502/Transformer_AE_regression.pth",
-        "scaler": shared_scaler_path,
-        "pca": None,
+        "label": "Transformer 45 PCA",
+        "model": "training_results/training_synergies_results/training_20250610_175018/Transformer_45_PCA.pth",
+        "scaler": "training_results/training_synergies_results/training_20250610_175018/scaler.save",
+        "pca": "training_results/training_synergies_results/training_20250610_175018/pca.save",
         "type": "Transformer",
         "decode": decode_output_sincos
     }
