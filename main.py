@@ -59,9 +59,9 @@ if __name__ == "__main__":
     config = load_config(args.info_path)
 
     # Print help prompt examples
-    print("\nHelping prompt : ")
-    print("python main.py --info_path training_results\\training_20250521_150116\\training_info.txt \n")
-    print("python main.py --info_path training_results\\training_20250521_150116\\training_info.txt \n")
+    print("\nHelping prompt : ") 
+    print("python main.py --info_path training_results\training_20250521_150116\training_info.txt \n") 
+    print("python main.py --info_path training_results\training_20250521_150116\training_info.txt \n")
     
     # Extract config parameters
     fix_Indices = config.get("Fixed Indices", [])
@@ -118,65 +118,4 @@ if __name__ == "__main__":
                 
                 # Send result back to client as raw bytes
                 conn.sendall(reconstructed.tobytes())
-
-    # HOST = '127.0.0.1'
-    # PORT = 65432
-    # server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # server.bind((HOST, PORT))
-    # server.listen(1)
-    # print(f"Server listening on {HOST}:{PORT}...")
-
-    # conn, addr = server.accept()
-    # print(f"Connected to {addr}")
-
-
-    # try:
-    #     while True:
-    #         data = conn.recv(1024)
-    #         if not data:
-    #             break
-
-    #         inputs = np.frombuffer(data, dtype=np.float32).copy()
-    #         if inputs.shape[0] != 4:
-    #             print("Expected 4 float inputs.")
-    #             continue
-
-    #         input_tensor = torch.FloatTensor(inputs.reshape(1, -1))
-
-    #         with torch.no_grad():
-    #             output = model(input_tensor).numpy()
-        
-
-    #         output = scaler_y.inverse_transform(output).flatten()
-
-            
-    #         original_output = np.zeros(45)
-    #         mixed_col = 0
-    #         original_col = 0
-
-    #         for i in range(45):
-    #             if i in fix_Indices:
-    #                 # Estrai sin e cos, poi calcola l'angolo con arctan2
-    #                 sin_vals = output[mixed_col]
-    #                 cos_vals = output[mixed_col + 1]
-    #                 angles_rad = np.arctan2(sin_vals, cos_vals) 
-    #                 original_output[original_col] = np.rad2deg(angles_rad) # Converti in gradi
-    #                 mixed_col += 2
-    #                 original_col += 1
-    #             else:
-    #                 # Copia direttamente il valore raw
-    #                 original_output[original_col] = output[mixed_col]
-    #                 mixed_col += 1
-    #                 original_col += 1
-
-    #         conn.sendall(np.array(original_output, dtype=np.float32).tobytes())
-
-    # except Exception as e:
-    #     print("Error:", e)
-    # finally:
-    #     conn.close()
-    #     server.close()
-
-
-
-        
+                
