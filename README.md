@@ -22,11 +22,31 @@ This project explores the use of hand synergies to control a simulated hand in U
 6. Once you stop the PLAY MODE, the CSV file is saved
 7. You can find the CSV file in AppData(W + R) -> LocalLow-> DefaultCompany-> Unity Project folder
 
-# Neural Network 
+# Steps for REAL-TIME PREDICTION using NN (FCNN or Transformer)
+   a. #Direct PCA Output:#  We reduced the dataset using PCA and trained the NN to predict the PCA components. The joint predictions are obtained by using the PCA inverse transform.
+      1. In the folder "training_results/training_synergies_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different number of PCA components: 10,             15, 30, 45.
+      2. To replicate the results, you can run "python main_synergies.py --info_path training_results\training_synergies_results\training_20250521_150116\training_info.txt" (example)
+      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
 
-# Hand Synergies
+   b. #PCA-Based Loss Only: # We used the whole dataset to train the NN, and we used the dimensionality reduction only in the loss function (PCA). The NN outputs the whole set of joints predictions.
+      1. In the folder "training_results/training_losspca_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different number of PCA components: 10,             15, 30, 45.
+      2. To replicate the results, you can run "python main.py --info_path training_results/training_losspca_results/training_20250606_191433/training_info.txt" (example)
+      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
 
-# Control Law
+   c. #Autoencoder-Based Loss: # We used the whole dataset to train the NN, and we used the dimensionality reduction only in the loss function (Autoencoder). Also added a constraint term in the loss to            prevent unrealistic joint configurations. The NN outputs the whole set of joints predictions.
+      1. In the folder "training_results/training_latentspace_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different dimensions for the latent space:            10, 15, 30, 45.
+      2. To replicate the results, you can run "python main.py --info_path training_results/training_latentspace_results/FCNN/training_20250606_181904/training_info.txt" (example)
+      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
+   
+ # Training files
+
+   1. Direct PCA Output --> train_synergies.py
+   2. PCA-Based Loss Only --> train_losspca.py
+   3. Autoencoder-Based Loss --> train_latentspace_input.py
+   4. Autoencoder (alone) --> train_AE_VAE.py
+
+ 
+
 
 
    
