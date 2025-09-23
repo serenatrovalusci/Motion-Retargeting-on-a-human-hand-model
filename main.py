@@ -105,10 +105,10 @@ if __name__ == "__main__":
                     break
 
                 # Convert received bytes into numpy array of float32
-                input = np.frombuffer(data, dtype=np.float32)
+                input = np.frombuffer(data, dtype=np.float32).copy()
                 
                 # Run model inference
-                output = model(torch.FloatTensor(input.reshape(1, -1))).numpy()
+                output = model(torch.FloatTensor(input.reshape(1, -1))).detach().numpy()
                 
                 # Reverse scaling (to original value range)
                 output = scaler.inverse_transform(output).flatten()
