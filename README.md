@@ -145,7 +145,7 @@ Key findings:
 
 **Transformer + Autoencoder Latent Loss (L = 15)** — real-time hand reconstruction in Unity.
 
-https://github.com/user-attachments/assets/70175211-d98f-4447-85ae-4b6039534453
+https://github.com/user-attachments/assets/a3feec20-c0c4-4050-8615-d4f05fa425de
 
 ---
 
