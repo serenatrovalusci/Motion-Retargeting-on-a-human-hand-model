@@ -1,62 +1,154 @@
-# Hand Motion Reconstruction from Minimal Input through Latent-Space Learning
+# Hand Motion Reconstruction from Minimal Inputs through Latent-Space Learning
 
-We address the problem of real-time motion retargeting for a virtual human hand using the WeART TouchDIVER G1 haptic glove and a data-driven approach based on a neural network. In order to exploit the Hand Synergies and improve both generalization and efficiency, we apply dimensionality reduction techniques such as Principal Component Analysis (PCA) and Autoencoders. 
+A real-time, data-driven framework for hand motion retargeting that reconstructs full joint configurations of a virtual hand from only **four high-level inputs** acquired from a Weart TouchDIVER G1 haptic glove. The approach yields anatomically consistent poses with low latency in Unity, despite minimal sensing.
 
-# Steps for Motion Retargeting with Built-In functions of Weart SDK: 
+> **Authors:** Charlotte Ludovica Primiceri · Serena Trovalusci · Diana Ioana Bubenek Turconi · Giordano Pagano  
+> **Supervisors:** Emanuele De Santis · Marilena Vendittelli  
+> **Institution:** Dipartimento di Ingegneria Informatica, Automatica e Gestionale (DIAG), Sapienza University of Rome  
+> **Report:** [`Hand_Motion_Reconstruction.pdf`](Hand_Motion_Reconstruction_from_Minimal_Inputs_through_Latent_Space_Learning.pdf)
 
-1. Download Unity Hub 3.0: https://unity.com/download
-2. Download the Weart Unity SDK: https://weart.it/repository/downloads/unity/WEART_SDK_Unity_v2.0.0.zip and extract folder
-3. Create New Project
-4. Go to: Window->Package Manager-> + -> Add package from disk -> select extracted folder from downloaded zip
-5. Go to: WEART -> Add Weart Startup Components
-6. From Hierarchy and go to: WEART-> Hands -> WEARTLeftHand -> go to Inspector and set the Tracking Source as WeArtController
-7. Start PLAY MODE 
+---
 
-# Steps for DATASET creation
+## What is this project?
 
-1. Start PLAY MODE
-2. From Hierarchy and go to: WEART-> Hands -> WEARTLeftHand -> go to Inspector -> Add Component -> Script -> Hand Data Logger
-3. From Hierarchy -> Hands-> WEARTLeftHand -> HandRig->HandRoot->DEF-hand.R/DEF-thumb.01.R/DEF-thumb.02.R/DEF-thumb.03.R select LeftHapticThumb and slide it to "Thumb Closure" in Lefthand Inspector in Hand Data Logger section (look for LeftHapticIndex and LeftHapticMiddle, respectively) 
-4. From Hierarchy -> Hands-> WEARTLeftHand -> HandRig->HandRoot->DEF-hand.R/ select DEF-thumb.01.R and slide it to "Thumb 1" in the LeftHand Inspector in the Hand Data Logger section (look for all the remaining joints and do the same)
-5. You should see from the Unity console that the CSV file has been created, you can start moving your hand, data is being registered 
-6. Once you stop the PLAY MODE, the CSV file is saved
-7. You can find the CSV file in AppData(W + R) -> LocalLow-> DefaultCompany-> Unity Project folder
+Existing hand retargeting pipelines rely on dense sensing (e.g., full keypoint tracking) or optimization-heavy inverse kinematics, which limits portability and latency in interactive settings. This project instead pursues **minimal sensing** — just four scalars — with a learning-based model that restores a full, biomechanically consistent 45-DoF hand pose in real time.
 
-# Steps for REAL-TIME PREDICTION using NN (FCNN or Transformer)
-   a. Direct PCA Output:  We reduced the dataset using PCA and trained the NN to predict the PCA components. The joint predictions are obtained by using the PCA inverse transform.
-   
-      1. In the folder "training_results/training_synergies_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different number of PCA components: 10,                 15, 30, 45.
-      
-      2. To replicate the results, you can run "python main_synergies.py --info_path training_results\training_synergies_results\training_20250521_150116\training_info.txt" (example).
-      
-      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         Pipeline Overview                        │
+│                                                                  │
+│   Weart TouchDIVER G1                                            │
+│   [ThumbClosure, IndexClosure, MiddleClosure, ThumbAbduction]    │
+│                    │  4 scalars                                  │
+│                    ▼                                             │
+│             Neural Network                                       │
+│         (FCNN or Transformer)                                    │
+│                    │  62 outputs (sin/cos encoded)               │
+│                    ▼                                             │
+│          45 joint angles  ──►  Unity virtual hand (20 Hz)        │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-   b. PCA-Based Loss Only:  We used the whole dataset to train the NN, and we used the dimensionality reduction only in the loss function (PCA). The NN outputs the whole set of joints predictions.
-   
-      1. In the folder "training_results/training_losspca_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different number of PCA components: 10,                   15, 30, 45.
-      
-      2. To replicate the results, you can run "python main.py --info_path training_results/training_losspca_results/training_20250606_191433/training_info.txt" (example). 
-      
-      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
+Human hand movements exhibit **synergies** — joints move in coordinated, correlated patterns rather than independently. This project exploits that property through dimensionality reduction (PCA and Autoencoders) to reconstruct realistic hand poses from a limited input set.
 
-   c. Autoencoder-Based Loss:  We used the whole dataset to train the NN, and we used the dimensionality reduction only in the loss function (Autoencoder). Also added a constraint term in the loss to              prevent unrealistic joint configurations. The NN outputs the whole set of joints predictions.
-   
-      1. In the folder "training_results/training_latentspace_results" you can find the weights and parameters for the trained models (FCNN or Transformer) using different dimensions for the latent space:            10, 15, 30, 45.
-      
-      2. To replicate the results, you can run "python main.py --info_path training_results/training_latentspace_results/FCNN/training_20250606_181904/training_info.txt" (example).
-      
-      3. Once you obtain the message: "Server ready (Model: {model_type} | Fixed indices: {fix_indices})...", you can start PLAY MODE on Unity and run the hand simulation.
-   
- # Training files
+---
 
-   1. Direct PCA Output --> train_synergies.py
-   2. PCA-Based Loss Only --> train_losspca.py
-   3. Autoencoder-Based Loss --> train_latentspace_input.py
-   4. Autoencoder (alone) --> train_AE_VAE.py
+## Models
 
- 
+| Model | Architecture | Training Speed | Inference | Generalization |
+|-------|-------------|---------------|-----------|----------------|
+| **FCNN** | `Input(4) → 512 → 256 → 128 → 64 → Output(62)` with LeakyReLU + BatchNorm/Dropout | Very fast | Extremely fast | Limited (linear/simple cases) |
+| **Transformer** | Input Embedding → Positional Encoding → 3× Encoder Layers (MHA 128-dim, 4 heads) → 5 per-finger Output Heads | Slower | Fast (real-time viable) | Strong (nonlinear/noisy data) |
 
+Both models output **62 values**: 45 joint angles, with problematic joints (all thumb joints, Middle03, Index02/03) encoded as sine/cosine pairs to avoid Euler angle discontinuities at ±180°.
 
+---
 
-   
+## Dimensionality Reduction Strategies
 
+Three approaches were explored to enforce biomechanical plausibility:
+
+| Strategy | Description | Outcome |
+|----------|-------------|---------|
+| **Direct PCA Output** | Models predict PCA coefficients directly; inverse PCA to recover joint angles | Good compression, acceptable accuracy down to 15 components |
+| **PCA in the Loss** | Models predict full 62-D output; loss computed in PCA space | Low test loss but erratic individual joint behavior |
+| **Autoencoder Latent Loss** *(best)* | Frozen encoder maps predictions and ground truth to latent space; MSE in latent space | Best visual quality and joint-level accuracy |
+
+The autoencoder architecture is symmetric: `62 → 512 → 256 → L → 256 → 512 → 62` with ReLU activations, trained with latent dimensions `L ∈ {10, 15, 30, 45}`. The encoder is frozen during predictor training; only the regression model is optimized.
+
+---
+
+## Repository Structure
+
+```
+.
+├── train.py                          # FCNN / Transformer training (baseline)
+├── train_losspca.py                  # Training with PCA-based loss
+├── train_lossencoder.py              # Training with autoencoder latent loss
+├── autoencoder.py                    # Autoencoder definition and training
+├── models/                           # FCNN and Transformer model definitions
+├── HandDataLogger.cs                 # Unity C# script for dataset recording (20 Hz)
+├── inference_server.py               # Python TCP server for real-time Unity inference
+├── dataset/                          # Recorded CSV files (~17,000 samples)
+├── video_results/                    # Demo videos per experiment
+│   ├── training_losspca_results/
+│   └── training_lossencoder_results/
+└── README.md
+```
+
+---
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/serenatrovalusci/Hand-Motion-Reconstruction-from-Minimal-Inputs-through-Latent-Space-Learning.git
+cd Hand-Motion-Reconstruction-from-Minimal-Inputs-through-Latent-Space-Learning
+```
+
+### 2. Install dependencies
+
+```bash
+pip install torch numpy pandas scikit-learn
+```
+
+### 3. Train a model
+
+```bash
+# Baseline (no dimensionality reduction)
+python train.py
+
+# With PCA-based loss
+python train_losspca.py
+
+# With autoencoder latent loss (best results)
+python train_lossencoder.py
+```
+
+### 4. Run real-time inference
+
+Start the Python server, then play the Unity scene:
+
+```bash
+python inference_server.py
+```
+
+> Requires Unity with the Weart SDK and the `HandDataLogger.cs` / inference scripts integrated into the project scene.
+
+---
+
+## Results
+
+### Best Configuration: Transformer + Autoencoder Latent Loss (L = 15)
+
+The Transformer trained with a 15-dimensional autoencoder latent loss achieves the best balance between accuracy, visual quality, and computational efficiency — delivering natural, biomechanically consistent hand motion in real time.
+
+| Latent Dimension | FCNN Test MSE | Transformer Test MSE |
+|-----------------|--------------|---------------------|
+| 10 | 0.0062 | 0.0053 |
+| **15** | 0.0061 | **0.0051** |
+| 30 | 0.0043 | 0.0036 |
+| 45 | 0.0049 | 0.0040 |
+
+Key findings:
+
+- The **Transformer consistently outperforms the FCNN** across all latent dimensions, especially for joints with higher variability.
+- The **15-dimensional latent space** strikes the best balance: visually consistent motion with significantly reduced training complexity.
+- Adding a **constraint loss term** (ReLU-based penalty for out-of-range joint predictions) further stabilized outputs and improved validation loss.
+- Our baseline achieves a **per-joint MAE of ~2.5°**, compared to ~15° reported by Glauser et al. [7] on a similar glove-based task.
+- The **PCA-in-loss** approach yielded low test loss but erratic individual joints: small errors in PCA space cause large deviations after inverse PCA, particularly for non-dominant joints.
+
+---
+
+## Demo — Best Performance
+
+**Transformer + Autoencoder Latent Loss (L = 15)** — real-time hand reconstruction in Unity.
+
+https://github.com/user-attachments/assets/70175211-d98f-4447-85ae-4b6039534453
+
+---
+
+## Acknowledgements
+
+This project was developed as original work at the DIAG department of Sapienza University of Rome, under the supervision of Emanuele De Santis and Marilena Vendittelli.
